@@ -6,7 +6,6 @@ Identify financial transactions that are recurring.
 
 ### Pre-requisites
 
-- Requires python 3.12
 - Requires [uv](https://github.com/astral-sh/uv) - follow the instructions on that page to install uv.
 
 ### Install or sync dependencies

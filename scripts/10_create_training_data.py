@@ -7,9 +7,9 @@ import pandas as pd
 # %%
 # configure script arguments
 
-n_labelers = 30
+n_labelers = 40
 n_repetitions = 3
-n_accounts = 150  # must be a multiple of n_labelers
+n_accounts = 200  # must be a multiple of n_labelers
 n_accounts_per_labeler = n_accounts // n_labelers * n_repetitions
 min_transactions_per_account = 500
 max_transactions_per_account = 4000
@@ -18,18 +18,15 @@ max_transactions_per_labeler = 24000
 
 plaid_filename = "../../data/plaid.csv"
 internal_filename = "../../data/internal.csv"
-output_dir = "../../data/training_data"
+output_dir = "../../data/to_label"
 
 # %%
 # parse script arguments from command line
 
-parser = argparse.ArgumentParser(
-    description="Create training data for the labelers")
+parser = argparse.ArgumentParser(description="Create training data for the labelers")
 parser.add_argument("--f", help="used by ipykernel_launcher")
-parser.add_argument("--plaid", type=str, default=plaid_filename, 
-                    help="Plaid transactions file")
-parser.add_argument("--internal", type=str, default=internal_filename, 
-                    help="Internal transactions file")
+parser.add_argument("--plaid", type=str, default=plaid_filename, help="Plaid transactions file")
+parser.add_argument("--internal", type=str, default=internal_filename, help="Internal transactions file")
 args = parser.parse_args()
 plaid_filename, internal_filename = args.plaid, args.internal
 
@@ -58,7 +55,7 @@ print(internal_df.head(3))
 for column in internal_df.columns:
     n_empty = internal_df[column].isna().sum()
     print(f"{column}: {n_empty} empty cells")
-    
+
 # %%
 # catenate the plaid and internal transactions
 
@@ -66,9 +63,9 @@ transactions_df = pd.concat([plaid_df, internal_df])
 print(len(transactions_df))
 
 # %%
-# select user_id, 
-#        merchant_name as name, 
-#        transaction_timestamp as date, 
+# select user_id,
+#        merchant_name as name,
+#        transaction_timestamp as date,
 #        transaction_amount as amount
 
 transactions_df = transactions_df[["user_id", "merchant_name", "transaction_timestamp", "transaction_amount"]]
@@ -90,9 +87,12 @@ print(len(user_id_to_n_transactions))
 
 # %%
 # filter the users with less than min_transactions or more than max_transactions
-user_ids = [user_id for user_id in user_id_to_n_transactions 
-            if user_id_to_n_transactions[user_id] >= min_transactions_per_account
-            and user_id_to_n_transactions[user_id] <= max_transactions_per_account]
+user_ids = [
+    user_id
+    for user_id in user_id_to_n_transactions
+    if user_id_to_n_transactions[user_id] >= min_transactions_per_account
+    and user_id_to_n_transactions[user_id] <= max_transactions_per_account
+]
 print(len(user_ids))
 
 # %%
@@ -111,7 +111,7 @@ print(total_transactions, total_transactions / n_accounts, total_transactions / 
 # randomly assign the user_ids to labelers
 # under the constraint that each labeler gets n_accounts_per_labeler
 # each user_id should be assigned to exactly n_repetitions labelers
-# and the total number of transactions for the accounts assigned to a labeler should be between 
+# and the total number of transactions for the accounts assigned to a labeler should be between
 # min_transactions_per_labeler and max_transactions_per_labeler
 
 constraints_satisfied = False
@@ -126,8 +126,7 @@ while not constraints_satisfied:
         # but prefer to select user_ids that have been assigned to the least number of labelers
         candidate_user_ids = []
         for repetition in range(n_repetitions):
-            available_user_ids = [uid for uid in selected_user_ids 
-                                  if len(user_id_to_labelers[uid]) == repetition]
+            available_user_ids = [uid for uid in selected_user_ids if len(user_id_to_labelers[uid]) == repetition]
             select_count = min(n_accounts_per_labeler - len(candidate_user_ids), len(available_user_ids))
             candidate_user_ids.extend(random.sample(available_user_ids, select_count))
             if len(candidate_user_ids) == n_accounts_per_labeler:
@@ -162,26 +161,22 @@ while not constraints_satisfied:
 print("constraints satisfied")
 
 
-
-
-
-
-
-
 # %%
 # print the number of transactions for each labeler
 
 for labeler in range(n_labelers):
-    print(f"labeler {labeler} has {sum(user_id_to_n_transactions[uid] for uid in labeler_to_user_ids[labeler])} transactions")
+    print(
+        f"labeler {labeler} has {sum(user_id_to_n_transactions[uid] for uid in labeler_to_user_ids[labeler])} transactions"
+    )
 
 # %%
 # create files for each labeler containing the transactions for the accounts assigned to the labeler
 
 for labeler in range(n_labelers):
     # get transactions for this labeler's assigned user_ids
-    labeler_df = transactions_df[transactions_df['user_id'].isin(labeler_to_user_ids[labeler])]
+    labeler_df = transactions_df[transactions_df["user_id"].isin(labeler_to_user_ids[labeler])]
     # sort by user_id, name, date, amount
-    labeler_df = labeler_df.sort_values(['user_id', 'name', 'date', 'amount'])
+    labeler_df = labeler_df.sort_values(["user_id", "name", "date", "amount"])
     # save the dataframe to a csv file
     labeler_df.to_csv(f"{output_dir}/labeler_{labeler}.csv", index=False)
 
