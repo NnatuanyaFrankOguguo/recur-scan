@@ -1,8 +1,19 @@
+#!/usr/bin/env python
+"""
+Create training datasets for transaction labeling.
+
+This script processes raw transaction data from Plaid and internal sources,
+selecting accounts and distributing them to labelers in a balanced way.
+Each account is assigned to multiple labelers to establish consensus.
+"""
+
 # %%
 import argparse
 import random
+import sys
 
 import pandas as pd
+from loguru import logger
 
 # %%
 # configure script arguments
@@ -32,35 +43,47 @@ plaid_filename, internal_filename = args.plaid, args.internal
 
 # %%
 # load the plaid transactions
-
-plaid_df = pd.read_csv(plaid_filename)
-print(len(plaid_df))
-print(plaid_df.head(3))
+try:
+    plaid_df = pd.read_csv(plaid_filename)
+    logger.info(f"Loaded {len(plaid_df)} plaid transactions")
+    logger.info(f"Sample transactions:\n{plaid_df.head(3)}")
+except FileNotFoundError:
+    logger.error(f"Plaid transactions file not found: {plaid_filename}")
+    sys.exit(1)
+except Exception as e:
+    logger.error(f"Error loading plaid transactions: {e}")
+    sys.exit(1)
 
 # %%
 # count the number of empty cells in each column
 for column in plaid_df.columns:
     n_empty = plaid_df[column].isna().sum()
-    print(f"{column}: {n_empty} empty cells")
+    logger.info(f"{column}: {n_empty} empty cells")
 
 # %%
 # load the internal transactions
-
-internal_df = pd.read_csv(internal_filename)
-print(len(internal_df))
-print(internal_df.head(3))
+try:
+    internal_df = pd.read_csv(internal_filename)
+    logger.info(f"Loaded {len(internal_df)} internal transactions")
+    logger.info(f"Sample transactions:\n{internal_df.head(3)}")
+except FileNotFoundError:
+    logger.error(f"Internal transactions file not found: {internal_filename}")
+    sys.exit(1)
+except Exception as e:
+    logger.error(f"Error loading internal transactions: {e}")
+    sys.exit(1)
 
 # %%
 # count the number of empty cells in each column
 for column in internal_df.columns:
     n_empty = internal_df[column].isna().sum()
-    print(f"{column}: {n_empty} empty cells")
+    logger.info(f"{column}: {n_empty} empty cells")
 
 # %%
 # catenate the plaid and internal transactions
 
 transactions_df = pd.concat([plaid_df, internal_df])
-print(len(transactions_df))
+logger.info(f"Combined dataset contains {len(transactions_df)} transactions")
 
 # %%
 # select user_id,
@@ -70,15 +93,28 @@ print(len(transactions_df))
 
 transactions_df = transactions_df[["user_id", "merchant_name", "transaction_timestamp", "transaction_amount"]]
 # rename the columns
-transactions_df.columns = ["user_id", "name", "date", "amount"]
+transactions_df = transactions_df.rename(
+    columns={
+        "user_id": "user_id",
+        "merchant_name": "name",
+        "transaction_timestamp": "date",
+        "transaction_amount": "amount",
+    }
+)
 # convert the date from various formats to YYYY-MM-DD
-transactions_df["date"] = pd.to_datetime(transactions_df["date"], format="mixed", utc=True).dt.date
-print(transactions_df.head(3))
+try:
+    transactions_df["date"] = pd.to_datetime(transactions_df["date"], format="mixed", utc=True).dt.date.astype(str)
+    logger.info(f"Sample of processed transactions:\n{transactions_df.head(3)}")
+except Exception as e:
+    logger.error(f"Error converting date format: {e}")
+    sys.exit(1)
 
 # %%
 # drop the rows with empty cells
+initial_count = len(transactions_df)
 transactions_df = transactions_df.dropna()
-print(len(transactions_df))
+dropped_count = initial_count - len(transactions_df)
+logger.info(f"Dropped {dropped_count} rows with missing values. Remaining: {len(transactions_df)} transactions")
 
 # %%
 # create a dictionary of user_id to number of transactions
@@ -117,14 +153,14 @@ print(total_transactions, total_transactions / n_accounts, total_transactions / 
 constraints_satisfied = False
 while not constraints_satisfied:
     # Initialize dictionaries and sets
-    user_id_to_labelers = {user_id: [] for user_id in selected_user_ids}
-    labeler_to_user_ids = {i: [] for i in range(n_labelers)}
+    user_id_to_labelers: dict[str, list[int]] = {user_id: [] for user_id in selected_user_ids}
+    labeler_to_user_ids: dict[int, list[str]] = {i: [] for i in range(n_labelers)}
 
     # For each labeler
     for labeler in range(n_labelers):
         # randomly select n_accounts_per_labeler user_ids from the selectable set
         # but prefer to select user_ids that have been assigned to the least number of labelers
-        candidate_user_ids = []
+        candidate_user_ids: list[str] = []
         for repetition in range(n_repetitions):
             available_user_ids = [uid for uid in selected_user_ids if len(user_id_to_labelers[uid]) == repetition]
             select_count = min(n_accounts_per_labeler - len(candidate_user_ids), len(available_user_ids))
@@ -165,9 +201,7 @@ print("constraints satisfied")
 # print the number of transactions for each labeler
 
 for labeler in range(n_labelers):
-    print(
-        f"labeler {labeler} has {sum(user_id_to_n_transactions[uid] for uid in labeler_to_user_ids[labeler])} transactions"
-    )
+    print(f"{labeler} has {sum(user_id_to_n_transactions[uid] for uid in labeler_to_user_ids[labeler])} transactions")
 
 # %%
 # create files for each labeler containing the transactions for the accounts assigned to the labeler
