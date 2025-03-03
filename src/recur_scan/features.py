@@ -1,21 +1,21 @@
-from typing import Any
+from recur_scan.transactions import Transaction
 
 
-def get_features() -> dict[str, Any]:
-    """Extract features from transaction data for recurring transaction detection.
-    exit
-        This function analyzes transaction patterns to generate features that help
-        identify recurring transactions, such as frequency, regularity, amount consistency,
-        and merchant information.
+def get_n_transactions_same_amount(transaction: Transaction, all_transactions: list[Transaction]) -> int:
+    """Get the number of transactions in all_transactions with the same amount as transaction"""
+    return len([t for t in all_transactions if t.amount == transaction.amount])
 
-        Returns:
-            Dict[str, Any]: Dictionary of extracted features where keys are feature names
-                and values are the corresponding feature values.
-                Currently returns an empty dictionary as placeholder.
 
-        Examples:
-            >>> features = get_features()
-            >>> print(features)
-            {}
-    """
-    return {}
+def get_percent_transactions_same_amount(transaction: Transaction, all_transactions: list[Transaction]) -> float:
+    """Get the percentage of transactions in all_transactions with the same amount as transaction"""
+    if not all_transactions:
+        return 0.0
+    n_same_amount = len([t for t in all_transactions if t.amount == transaction.amount])
+    return n_same_amount / len(all_transactions)
+
+
+def get_features(transaction: Transaction, all_transactions: list[Transaction]) -> dict[str, float | int]:
+    return {
+        "n_transactions_same_amount": get_n_transactions_same_amount(transaction, all_transactions),
+        "percent_transactions_same_amount": get_percent_transactions_same_amount(transaction, all_transactions),
+    }
