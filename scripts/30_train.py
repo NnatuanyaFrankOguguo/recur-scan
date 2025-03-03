@@ -158,8 +158,10 @@ f1s = []
 for fold, (train_idx, val_idx) in enumerate(kf.split(X, y)):
     logger.info(f"Fold {fold + 1} of {n_cv_folds}")
     # Get training and validation data
-    X_train, X_val = X[train_idx], X[val_idx]
-    y_train, y_val = [y[i] for i in train_idx], [y[i] for i in val_idx]
+    X_train = [X[i] for i in train_idx]
+    X_val = [X[i] for i in val_idx]
+    y_train = [y[i] for i in train_idx]
+    y_val = [y[i] for i in val_idx]
     transactions_val = [transactions[i] for i in val_idx]  # Keep the original transaction instances for this fold
 
     # Train the model
