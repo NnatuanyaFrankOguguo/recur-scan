@@ -9,17 +9,18 @@ module from recur_scan.features to prepare the input data.
 
 # %%
 import argparse
+import json
 import os
 
 import joblib
 from loguru import logger
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction import DictVectorizer
-from sklearn.metrics import classification_report, confusion_matrix, f1_score, precision_score, recall_score
+from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score
 from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
 
 from recur_scan.features import get_features
-from recur_scan.transactions import group_transactions, read_labeled_transactions, write_misclassified_transactions
+from recur_scan.transactions import group_transactions, read_labeled_transactions, write_transactions
 
 # %%
 # configure the script
@@ -27,8 +28,8 @@ from recur_scan.transactions import group_transactions, read_labeled_transaction
 n_cv_folds = 3  # number of cross-validation folds, could be 5
 n_hpo_iters = 20  # number of hyperparameter optimization iterations
 
-in_path = "../../data/in_process/Osasere  - labeler_30.csv"
-out_dir = "../../data/training_out"
+in_path = "your csv file goes here"
+out_dir = "your output directory goes here"
 
 # %%
 # parse script arguments from command line
@@ -57,7 +58,7 @@ logger.info(f"Read {len(transactions)} transactions with {len(y)} labels")
 # group transactions by user_id and name
 
 grouped_transactions = group_transactions(transactions)
-
+logger.info(f"Grouped {len(transactions)} transactions into {len(grouped_transactions)} groups")
 # %%
 # get features
 
@@ -68,6 +69,7 @@ features = [
 
 # convert features to a matrix for machine learning
 X = DictVectorizer(sparse=False).fit_transform(features)
+logger.info(f"Converted {len(features)} features into a {X.shape} matrix")
 
 # %%
 #
@@ -90,7 +92,22 @@ random_search = RandomizedSearchCV(
     model, param_dist, n_iter=n_hpo_iters, cv=n_cv_folds, scoring="f1", n_jobs=-1, verbose=1
 )
 random_search.fit(X, y)
-print("Best Hyperparameters:", random_search.best_params_)
+
+print("Best Hyperparameters:")
+for param, value in random_search.best_params_.items():
+    print(f"  {param}: {value}")
+
+best_params = random_search.best_params_
+
+# consider setting the best params yourself someday instead of using the random search
+# best_params = {
+#     "n_estimators": 500,
+#     "min_samples_split": 5,
+#     "min_samples_leaf": 2,
+#     "max_features": None,
+#     "max_depth": 20,
+#     "bootstrap": False,
+# }
 
 # %%
 #
@@ -99,12 +116,15 @@ print("Best Hyperparameters:", random_search.best_params_)
 
 # now that we have the best hyperparameters, train a model with them
 
-model = RandomForestClassifier(random_state=42, **random_search.best_params_)
+model = RandomForestClassifier(random_state=42, **best_params)
 model.fit(X, y)
 
+# %%
 # save the model using joblib
 joblib.dump(model, os.path.join(out_dir, "model.joblib"))
-
+# save the best params to a json file
+with open(os.path.join(out_dir, "best_params.json"), "w") as f:
+    json.dump(best_params, f)
 
 # %%
 #
@@ -126,23 +146,24 @@ f1 = f1_score(y, y_pred)
 
 print(f"Precision: {precision}")
 print(f"Recall: {recall}")
-print(f"F1 Score: {f1}")
-
-print("Classification Report:")
-print(classification_report(y, y_pred))
-
 print("Confusion Matrix:")
-print(confusion_matrix(y, y_pred))
+
+print("                Predicted Non-Recurring  Predicted Recurring")
+print("Actual Non-Recurring", end="")
+cm = confusion_matrix(y, y_pred)
+print(f"     {cm[0][0]:<20} {cm[0][1]}")
+print("Actual Recurring    ", end="")
+print(f"     {cm[1][0]:<20} {cm[1][1]}")
 
 
 # %%
 # get the misclassified transactions
 
-misclassified = [transactions[i] for i, y_pred in enumerate(y_pred) if y_pred != y[i]]
+misclassified = [transactions[i] for i, yp in enumerate(y_pred) if yp != y[i]]
 logger.info(f"Found {len(misclassified)} misclassified transactions (bias error)")
 
 # save the misclassified transactions to a csv file in the output directory
-write_misclassified_transactions(os.path.join(out_dir, "bias_errors.csv"), misclassified, y)
+write_transactions(os.path.join(out_dir, "bias_errors.csv"), misclassified, y)
 
 # %%
 #
@@ -158,14 +179,14 @@ f1s = []
 for fold, (train_idx, val_idx) in enumerate(kf.split(X, y)):
     logger.info(f"Fold {fold + 1} of {n_cv_folds}")
     # Get training and validation data
-    X_train = [X[i] for i in train_idx]
-    X_val = [X[i] for i in val_idx]
+    X_train = [X[i] for i in train_idx]  # type: ignore
+    X_val = [X[i] for i in val_idx]  # type: ignore
     y_train = [y[i] for i in train_idx]
     y_val = [y[i] for i in val_idx]
     transactions_val = [transactions[i] for i in val_idx]  # Keep the original transaction instances for this fold
 
     # Train the model
-    model = RandomForestClassifier(random_state=42, **random_search.best_params_)
+    model = RandomForestClassifier(random_state=42, **best_params)
     model.fit(X_train, y_train)
 
     # Make predictions
@@ -196,4 +217,6 @@ print(f"F1 Score: {sum(f1s) / len(f1s):.2f}")
 
 logger.info(f"Found {len(misclassified)} misclassified transactions (variance errors)")
 
-write_misclassified_transactions(os.path.join(out_dir, "variance_errors.csv"), misclassified, y)
+write_transactions(os.path.join(out_dir, "variance_errors.csv"), misclassified, y)
+
+# %%

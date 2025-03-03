@@ -36,7 +36,7 @@ def _parse_transactions(path: str, extract_labels: bool = False) -> tuple[list[T
                 )
             )
             if extract_labels:
-                labels.append(int(row["recurring"]))
+                labels.append(1 if row["recurring"].strip() == "1" else 0)
 
     return transactions, labels
 
@@ -67,25 +67,23 @@ def group_transactions(transactions: list[Transaction]) -> GroupedTransactions:
     return dict(grouped_transactions)
 
 
-def write_misclassified_transactions(
-    output_path: str, misclassified_transactions: list[Transaction], y: list[int]
-) -> None:
+def write_transactions(output_path: str, transactions: list[Transaction], y: list[int]) -> None:
     """
-    Save misclassified transactions to a CSV file.
+    Save transactions to a CSV file.
 
     Args:
         output_path: Path to save the CSV file
-        misclassified_transactions: List of misclassified Transaction objects
+        misclassified_transactions: List of Transaction objects
         y: List of true labels
     """
     with open(output_path, "w", newline="") as f:
-        if misclassified_transactions:
+        if transactions:
             # Get all fields from the Transaction dataclass plus the label
             fieldnames = [field.name for field in fields(Transaction)]
             fieldnames.extend(["recurring"])
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
-            for transaction in misclassified_transactions:
+            for transaction in transactions:
                 # convert transaction to dictionary using asdict()
                 row = asdict(transaction)
                 row["recurring"] = y[transaction.id]

@@ -72,7 +72,11 @@ extend-select = [
     "ARG", # flake8-unused-arguments
     "ERA", # eradicate (commented out code)
 ]
-ignore = ["S101", "ANN401"]  # Ignore assert statements and some annotation rules
+ignore = [
+    "S101",  # assert statements
+    "ANN401",  # annotation rules
+    "ERA001",  # commented out code
+ ]
 
 [tool.ruff.lint.isort]
 known-first-party = ["recur_scan"]
@@ -96,7 +100,10 @@ python_version = "3.12"  # Match your Python version requirement
 warn_redundant_casts = true
 disallow_incomplete_defs = true
 disallow_untyped_decorators = true
-disable_error_code = ["valid-type"]  # ignore PEP 695 type alias errors
+disable_error_code = [
+    "valid-type",  # ignore PEP 695 type alias errors
+    "unused-ignore",  # ignore unused ignores
+]
 
 [[tool.mypy.overrides]]
 module = [
