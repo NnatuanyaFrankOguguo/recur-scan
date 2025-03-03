@@ -72,7 +72,7 @@ extend-select = [
     "ARG", # flake8-unused-arguments
     "ERA", # eradicate (commented out code)
 ]
-ignore = ["S101", "ANN101", "ANN102", "ANN401"]  # Ignore assert statements and some annotation rules
+ignore = ["S101", "ANN401"]  # Ignore assert statements and some annotation rules
 
 [tool.ruff.lint.isort]
 known-first-party = ["recur_scan"]
