@@ -1,14 +1,29 @@
 # test features
+import pytest
 
-from recur_scan.features import get_features
+from recur_scan.features import get_n_transactions_same_amount, get_percent_transactions_same_amount
+from recur_scan.transactions import Transaction
 
 
-def test_get_features() -> None:
-    """Test that get_features returns an empty dictionary.
+@pytest.fixture
+def transactions():
+    """Fixture providing test transactions."""
+    return [
+        Transaction(id=1, user_id="user1", name="vendor1", amount=100, date="2024-01-01"),
+        Transaction(id=2, user_id="user1", name="vendor1", amount=100, date="2024-01-02"),
+        Transaction(id=3, user_id="user1", name="vendor1", amount=200, date="2024-01-03"),
+    ]
 
-    This test verifies the basic functionality of the get_features function.
-    As implementation progresses, this test should be expanded to verify
-    the correct features are being extracted.
+
+def test_get_n_transactions_same_amount(transactions) -> None:
+    """Test that get_n_transactions_same_amount returns the correct number of transactions with the same amount."""
+    assert get_n_transactions_same_amount(transactions[0], transactions) == 2
+    assert get_n_transactions_same_amount(transactions[2], transactions) == 1
+
+
+def test_get_percent_transactions_same_amount(transactions) -> None:
     """
-    features = get_features()
-    assert len(features) == 0
+    Test that get_percent_transactions_same_amount returns correct percentage.
+    Tests that the function calculates the right percentage of transactions with matching amounts.
+    """
+    assert pytest.approx(get_percent_transactions_same_amount(transactions[0], transactions)) == 2 / 3
