@@ -58,10 +58,23 @@ def get_n_transactions_days_apart(
     being n_days_apart from transaction
     """
     n_txs = 0
+    transaction_days = _get_days(transaction.date)
+
     for t in all_transactions:
-        n_days = abs(_get_days(t.date) - _get_days(transaction.date)) % n_days_apart
-        if n_days <= n_days_off or (n_days_apart - n_days) <= n_days_off:
+        t_days = _get_days(t.date)
+        days_diff = abs(t_days - transaction_days)
+        # skip if the difference is less than n_days_apart - n_days_off
+        if days_diff < n_days_apart - n_days_off:
+            continue
+
+        # Check if the difference is close to any multiple of n_days_apart
+        # For example, with n_days_apart=14 and n_days_off=1, we want to count
+        # transactions that are 13-15, 27-29, 41-43, etc. days apart
+        remainder = days_diff % n_days_apart
+
+        if remainder <= n_days_off or (n_days_apart - remainder) <= n_days_off:
             n_txs += 1
+
     return n_txs
 
 
@@ -99,10 +112,15 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "percent_transactions_same_amount": get_percent_transactions_same_amount(transaction, all_transactions),
         "ends_in_99": get_ends_in_99(transaction),
         "amount": transaction.amount,
-        "same_exact_day": get_n_transactions_same_day(transaction, all_transactions, 0),
+        "same_day_exact": get_n_transactions_same_day(transaction, all_transactions, 0),
         "same_day_off_by_1": get_n_transactions_same_day(transaction, all_transactions, 1),
         "same_day_off_by_2": get_n_transactions_same_day(transaction, all_transactions, 2),
+        "14_days_apart_exact": get_n_transactions_days_apart(transaction, all_transactions, 14, 0),
+        "14_days_apart_off_by_1": get_n_transactions_days_apart(transaction, all_transactions, 14, 1),
+        "7_days_apart_exact": get_n_transactions_days_apart(transaction, all_transactions, 7, 0),
+        "7_days_apart_off_by_1": get_n_transactions_days_apart(transaction, all_transactions, 7, 1),
         "is_insurance": get_is_insurance(transaction),
         "is_utility": get_is_utility(transaction),
         "is_phone": get_is_phone(transaction),
+        "is_always_recurring": get_is_always_recurring(transaction),
     }

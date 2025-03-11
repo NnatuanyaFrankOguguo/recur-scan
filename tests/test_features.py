@@ -7,6 +7,7 @@ from recur_scan.features import (
     get_is_insurance,
     get_is_phone,
     get_is_utility,
+    get_n_transactions_days_apart,
     get_n_transactions_same_amount,
     get_n_transactions_same_day,
     get_percent_transactions_same_amount,
@@ -59,10 +60,19 @@ def test_get_days_since_epoch() -> None:
     assert _get_days("1970-02-01") == 31
 
 
-# def test_get_n_transactions_days_apart() -> None:
-#     """Test get_n_transactions_days_apart."""
-#     assert get_n_transactions_days_apart(transactions[0], transactions, 14, 0) == 2
-#     assert get_n_transactions_days_apart(transactions[0], transactions, 14, 1) == 4
+def test_get_n_transactions_days_apart() -> None:
+    """Test get_n_transactions_days_apart."""
+    transactions = [
+        Transaction(id=1, user_id="user1", name="name1", amount=2.99, date="2024-01-01"),
+        Transaction(id=2, user_id="user1", name="name1", amount=2.99, date="2024-01-02"),
+        Transaction(id=3, user_id="user1", name="name1", amount=2.99, date="2024-01-14"),
+        Transaction(id=4, user_id="user1", name="name1", amount=2.99, date="2024-01-15"),
+        Transaction(id=4, user_id="user1", name="name1", amount=2.99, date="2024-01-16"),
+        Transaction(id=4, user_id="user1", name="name1", amount=2.99, date="2024-01-29"),
+        Transaction(id=4, user_id="user1", name="name1", amount=2.99, date="2024-01-31"),
+    ]
+    assert get_n_transactions_days_apart(transactions[0], transactions, 14, 0) == 2
+    assert get_n_transactions_days_apart(transactions[0], transactions, 14, 1) == 4
 
 
 def test_get_is_insurance(transactions) -> None:
