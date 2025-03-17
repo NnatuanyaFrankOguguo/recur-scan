@@ -1,5 +1,6 @@
 import re
-from datetime import datetime
+from datetime import date, datetime
+from functools import lru_cache
 
 from recur_scan.transactions import Transaction
 
@@ -39,12 +40,10 @@ def get_is_phone(transaction: Transaction) -> bool:
     return bool(match)
 
 
-def _get_days(date: str) -> int:
-    """Get the number of days since the epoch of a transaction date."""
-    # Assuming date is in the format YYYY-MM-DD
-    # use the datetime module for an accurate determination
-    # of the number of days since the epoch
-    return (datetime.strptime(date, "%Y-%m-%d") - datetime(1970, 1, 1)).days
+@lru_cache(maxsize=1024)
+def _parse_date(date_str: str) -> date:
+    """Parse a date string into a datetime.date object."""
+    return datetime.strptime(date_str, "%Y-%m-%d").date()
 
 
 def get_n_transactions_days_apart(
@@ -58,21 +57,24 @@ def get_n_transactions_days_apart(
     being n_days_apart from transaction
     """
     n_txs = 0
-    transaction_days = _get_days(transaction.date)
+    transaction_date = _parse_date(transaction.date)
+
+    # Pre-calculate bounds for faster checking
+    lower_remainder = n_days_apart - n_days_off
+    upper_remainder = n_days_off
 
     for t in all_transactions:
-        t_days = _get_days(t.date)
-        days_diff = abs(t_days - transaction_days)
-        # skip if the difference is less than n_days_apart - n_days_off
+        t_date = _parse_date(t.date)
+        days_diff = abs((t_date - transaction_date).days)
+
+        # Skip if the difference is less than minimum required
         if days_diff < n_days_apart - n_days_off:
             continue
 
         # Check if the difference is close to any multiple of n_days_apart
-        # For example, with n_days_apart=14 and n_days_off=1, we want to count
-        # transactions that are 13-15, 27-29, 41-43, etc. days apart
         remainder = days_diff % n_days_apart
 
-        if remainder <= n_days_off or (n_days_apart - remainder) <= n_days_off:
+        if remainder <= upper_remainder or remainder >= lower_remainder:
             n_txs += 1
 
     return n_txs

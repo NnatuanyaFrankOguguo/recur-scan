@@ -2,7 +2,6 @@
 import pytest
 
 from recur_scan.features import (
-    _get_days,
     get_ends_in_99,
     get_is_insurance,
     get_is_phone,
@@ -51,13 +50,6 @@ def test_get_n_transactions_same_day(transactions) -> None:
     assert get_n_transactions_same_day(transactions[0], transactions, 0) == 2
     assert get_n_transactions_same_day(transactions[0], transactions, 1) == 3
     assert get_n_transactions_same_day(transactions[2], transactions, 0) == 1
-
-
-def test_get_days_since_epoch() -> None:
-    """Test get the number of days since the epoch."""
-    assert _get_days("1970-01-01") == 0
-    assert _get_days("1971-01-01") == 365
-    assert _get_days("1970-02-01") == 31
 
 
 def test_get_n_transactions_days_apart() -> None:
