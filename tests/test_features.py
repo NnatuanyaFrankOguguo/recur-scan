@@ -3,6 +3,7 @@ import pytest
 
 from recur_scan.features import (
     get_ends_in_99,
+    get_is_always_recurring,
     get_is_insurance,
     get_is_phone,
     get_is_utility,
@@ -83,3 +84,8 @@ def test_get_is_utility(transactions) -> None:
     """Test get_is_utility."""
     assert get_is_utility(transactions[2])
     assert not get_is_utility(transactions[3])
+
+
+def test_get_is_always_recurring(transactions) -> None:
+    """Test get_is_always_recurring."""
+    assert not get_is_always_recurring(transactions[0])
