@@ -3,12 +3,14 @@ import pytest
 
 from recur_scan.features import (
     get_ends_in_99,
+    get_is_always_recurring,
     get_is_insurance,
     get_is_phone,
     get_is_utility,
     get_n_transactions_days_apart,
     get_n_transactions_same_amount,
     get_n_transactions_same_day,
+    get_pct_transactions_same_day,
     get_percent_transactions_same_amount,
 )
 from recur_scan.transactions import Transaction
@@ -65,6 +67,17 @@ def test_get_n_transactions_same_day() -> None:
     assert get_n_transactions_same_day(transactions[2], transactions, 0) == 1
 
 
+def test_get_pct_transactions_same_day() -> None:
+    """Test that get_pct_transactions_same_day returns the correct percentage of transactions on the same day."""
+    transactions = [
+        Transaction(id=1, user_id="user1", name="name1", amount=100, date="2024-01-01"),
+        Transaction(id=2, user_id="user1", name="name1", amount=100, date="2024-01-01"),
+        Transaction(id=3, user_id="user1", name="name1", amount=200, date="2024-01-02"),
+        Transaction(id=4, user_id="user1", name="name1", amount=2.99, date="2024-01-03"),
+    ]
+    assert get_pct_transactions_same_day(transactions[0], transactions, 0) == 2 / 4
+
+
 def test_get_n_transactions_days_apart() -> None:
     """Test get_n_transactions_days_apart."""
     transactions = [
@@ -104,3 +117,7 @@ def test_get_is_utility() -> None:
 
 def test_get_is_always_recurring() -> None:
     """Test get_is_always_recurring."""
+    assert get_is_always_recurring(Transaction(id=1, user_id="user1", name="netflix", amount=100, date="2024-01-01"))
+    assert not get_is_always_recurring(
+        Transaction(id=2, user_id="user1", name="walmart", amount=100, date="2024-01-01")
+    )
