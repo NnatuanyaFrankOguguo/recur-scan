@@ -1,7 +1,6 @@
 import re
-from datetime import date, datetime
-from functools import lru_cache
 
+from recur_scan.features_original import get_transaction_z_score, parse_date
 from recur_scan.transactions import Transaction
 
 
@@ -40,12 +39,6 @@ def get_is_phone(transaction: Transaction) -> bool:
     return bool(match)
 
 
-@lru_cache(maxsize=1024)
-def _parse_date(date_str: str) -> date:
-    """Parse a date string into a datetime.date object."""
-    return datetime.strptime(date_str, "%Y-%m-%d").date()
-
-
 def get_n_transactions_days_apart(
     transaction: Transaction,
     all_transactions: list[Transaction],
@@ -57,14 +50,14 @@ def get_n_transactions_days_apart(
     being n_days_apart from transaction
     """
     n_txs = 0
-    transaction_date = _parse_date(transaction.date)
+    transaction_date = parse_date(transaction.date)
 
     # Pre-calculate bounds for faster checking
     lower_remainder = n_days_apart - n_days_off
     upper_remainder = n_days_off
 
     for t in all_transactions:
-        t_date = _parse_date(t.date)
+        t_date = parse_date(t.date)
         days_diff = abs((t_date - transaction_date).days)
 
         # Skip if the difference is less than minimum required
@@ -149,4 +142,5 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "is_utility": get_is_utility(transaction),
         "is_phone": get_is_phone(transaction),
         "is_always_recurring": get_is_always_recurring(transaction),
+        "z_score": get_transaction_z_score(transaction, all_transactions),
     }
