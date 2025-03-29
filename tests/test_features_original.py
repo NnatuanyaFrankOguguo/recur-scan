@@ -4,6 +4,7 @@ from datetime import date
 import pytest
 
 from recur_scan.features_original import (
+    get_day,
     get_ends_in_99,
     get_is_always_recurring,
     get_is_insurance,
@@ -29,6 +30,13 @@ def test_parse_date():
     # Test with invalid date format
     with pytest.raises(ValueError, match=r"does not match format"):
         parse_date("01/01/2024")
+
+
+def test_get_day():
+    """Test get_day function."""
+    assert get_day("2024-01-01") == 1
+    assert get_day("2024-01-02") == 2
+    assert get_day("2024-01-03") == 3
 
 
 def test_get_n_transactions_same_amount() -> None:

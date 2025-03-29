@@ -100,14 +100,14 @@ def get_pct_transactions_days_apart(
     )
 
 
-def _get_day(date: str) -> int:
+def get_day(date: str) -> int:
     """Get the day of the month from a transaction date."""
     return int(date.split("-")[2])
 
 
 def get_n_transactions_same_day(transaction: Transaction, all_transactions: list[Transaction], n_days_off: int) -> int:
     """Get the number of transactions in all_transactions that are on the same day of the month as transaction"""
-    return len([t for t in all_transactions if abs(_get_day(t.date) - _get_day(transaction.date)) <= n_days_off])
+    return len([t for t in all_transactions if abs(get_day(t.date) - get_day(transaction.date)) <= n_days_off])
 
 
 def get_pct_transactions_same_day(

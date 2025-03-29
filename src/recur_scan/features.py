@@ -115,6 +115,16 @@ from recur_scan.features_frank import (
     vendor_recurrence_trend,
     weekly_spending_cycle,
 )
+from recur_scan.features_happy import (
+    get_day_of_month_consistency as get_day_of_month_consistency_happy,
+)
+from recur_scan.features_happy import (
+    get_n_transactions_same_description,
+    get_percent_transactions_same_description,
+)
+from recur_scan.features_happy import (
+    get_transaction_frequency as get_transaction_frequency_happy,
+)
 from recur_scan.features_laurels import (
     _aggregate_transactions,
     _calculate_intervals,
@@ -484,4 +494,11 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "is_subscription_amount": is_subscription_amount(transaction),
         **get_additional_features(transaction, all_transactions),
         **get_amount_variation_features(transaction, all_transactions),
+        # Happy's features
+        "get_n_transactions_same_description": get_n_transactions_same_description(transaction, all_transactions),
+        "get_percent_transactions_same_description": get_percent_transactions_same_description(
+            transaction, all_transactions
+        ),
+        "get_transaction_same_frequency": get_transaction_frequency_happy(transaction, all_transactions),
+        "get_day_of_month_consistency": get_day_of_month_consistency_happy(transaction, all_transactions),
     }
