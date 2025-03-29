@@ -2,6 +2,19 @@ import re
 from datetime import date, datetime
 from functools import lru_cache
 
+from recur_scan.features_christopher import (
+    detect_skipped_months,
+    follows_regular_interval,
+    get_coefficient_of_variation,
+    get_day_of_month_consistency,
+    get_median_interval,
+    get_n_transactions_same_amount_chris,
+    get_percent_transactions_same_amount_chris,
+    get_transaction_frequency,
+    get_transaction_std_amount,
+    is_known_fixed_subscription,
+    is_known_recurring_company,
+)
 from recur_scan.features_frank import (
     amount_coefficient_of_variation,
     amount_similarity,
@@ -150,8 +163,9 @@ def get_percent_transactions_same_amount(transaction: Transaction, all_transacti
     return n_same_amount / len(all_transactions)
 
 
-def get_features(transaction: Transaction, all_transactions: list[Transaction]) -> dict[str, float | int]:
+def get_features(transaction: Transaction, all_transactions: list[Transaction]) -> dict[str, float | int | bool]:
     """Get the features for a transaction"""
+
     return {
         "n_transactions_same_amount": get_n_transactions_same_amount(transaction, all_transactions),
         "percent_transactions_same_amount": get_percent_transactions_same_amount(transaction, all_transactions),
@@ -198,4 +212,19 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         **get_transaction_stability_features(all_transactions),  # Merges new stability-based features
         # "days_since_last_transaction": get_days_since_last_transaction(transaction, all_transactions),
         # **measure_transaction_freq
+        # Christopher's features
+        "n_transactions_same_name": len(all_transactions),
+        "n_transactions_same_amount_chris": get_n_transactions_same_amount_chris(transaction, all_transactions),
+        "percent_transactions_same_amount_chris": get_percent_transactions_same_amount_chris(
+            transaction, all_transactions
+        ),
+        "transaction_frequency": get_transaction_frequency(all_transactions),
+        "transaction_std_amount": get_transaction_std_amount(all_transactions),
+        "follows_regular_interval": follows_regular_interval(all_transactions),
+        "skipped_months": detect_skipped_months(all_transactions),
+        "day_of_month_consistency": get_day_of_month_consistency(all_transactions),
+        "coefficient_of_variation": get_coefficient_of_variation(all_transactions),
+        "median_interval": get_median_interval(all_transactions),
+        "is_known_recurring_company": is_known_recurring_company(transaction.name),
+        "is_known_fixed_subscription": is_known_fixed_subscription(transaction),
     }
