@@ -191,6 +191,17 @@ from recur_scan.features_praise import (
 from recur_scan.features_praise import (
     get_average_transaction_amount as get_average_transaction_amount_praise,
 )
+from recur_scan.features_samuel import (
+    get_amount_std_dev,
+    get_is_weekend_transaction,
+    get_median_transaction_amount,
+)
+from recur_scan.features_samuel import (
+    get_is_always_recurring as get_is_always_recurring_samuel,
+)
+from recur_scan.features_samuel import (
+    get_transaction_frequency as get_transaction_frequency_samuel,
+)
 from recur_scan.transactions import Transaction
 
 
@@ -418,4 +429,10 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         **get_user_vendor_relationship_features(transaction, all_transactions),
         "is_recurring_asimi": is_valid_recurring_transaction(transaction),
         **get_user_specific_features(transaction, all_transactions),
+        # Samuel's features
+        "transaction_frequency_samuel": get_transaction_frequency_samuel(transaction, all_transactions),
+        "amount_std_dev": get_amount_std_dev(transaction, all_transactions),
+        "median_transaction_amount": get_median_transaction_amount(transaction, all_transactions),
+        "is_weekend_transaction": get_is_weekend_transaction(transaction),
+        "is_always_recurring_samuel": get_is_always_recurring_samuel(transaction),
     }
