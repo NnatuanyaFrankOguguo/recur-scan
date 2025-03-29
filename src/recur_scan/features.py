@@ -317,6 +317,26 @@ from recur_scan.features_precious import (
 from recur_scan.features_precious import (
     is_recurring_merchant as is_recurring_merchant_precious,
 )
+from recur_scan.features_raphael import (
+    get_has_irregular_spike,
+    get_is_common_subscription_amount,
+    get_is_first_of_month,
+    get_is_fixed_interval,
+    get_is_similar_name,
+    get_occurs_same_week,
+)
+from recur_scan.features_raphael import (
+    get_n_transactions_days_apart as get_n_transactions_days_apart_raphael,
+)
+from recur_scan.features_raphael import (
+    get_n_transactions_same_day as get_n_transactions_same_day_raphael,
+)
+from recur_scan.features_raphael import (
+    get_pct_transactions_days_apart as get_pct_transactions_days_apart_raphael,
+)
+from recur_scan.features_raphael import (
+    get_pct_transactions_same_day as get_pct_transactions_same_day_raphael,
+)
 from recur_scan.features_samuel import (
     get_amount_std_dev,
     get_is_weekend_transaction,
@@ -696,4 +716,29 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "is_subscription": get_is_subscription(transaction),
         "is_streaming_service": get_is_streaming_service(transaction),
         "is_gym_membership": get_is_gym_membership(transaction),
+        # Raphael's features
+        "same_day_exact_raphael": get_n_transactions_same_day_raphael(transaction, all_transactions, 0),
+        "pct_transactions_same_day_raphael": get_pct_transactions_same_day_raphael(transaction, all_transactions, 0),
+        "same_day_off_by_1_raphael": get_n_transactions_same_day_raphael(transaction, all_transactions, 1),
+        "same_day_off_by_2_raphael": get_n_transactions_same_day_raphael(transaction, all_transactions, 2),
+        "14_days_apart_exact_raphael": get_n_transactions_days_apart_raphael(transaction, all_transactions, 14, 0),
+        "pct_14_days_apart_exact_raphael": get_pct_transactions_days_apart_raphael(
+            transaction, all_transactions, 14, 0
+        ),
+        "14_days_apart_off_by_1_raphael": get_n_transactions_days_apart_raphael(transaction, all_transactions, 14, 1),
+        "pct_14_days_apart_off_by_1_raphael": get_pct_transactions_days_apart_raphael(
+            transaction, all_transactions, 14, 1
+        ),
+        "7_days_apart_exact_raphael": get_n_transactions_days_apart_raphael(transaction, all_transactions, 7, 0),
+        "pct_7_days_apart_exact_raphael": get_pct_transactions_days_apart_raphael(transaction, all_transactions, 7, 0),
+        "7_days_apart_off_by_1_raphael": get_n_transactions_days_apart_raphael(transaction, all_transactions, 7, 1),
+        "pct_7_days_apart_off_by_1_raphael": get_pct_transactions_days_apart_raphael(
+            transaction, all_transactions, 7, 1
+        ),
+        "is_common_subscription_amount": get_is_common_subscription_amount(transaction),
+        "occurs_same_week": get_occurs_same_week(transaction, all_transactions),
+        "is_similar_name": get_is_similar_name(transaction, all_transactions),
+        "is_fixed_interval": get_is_fixed_interval(transaction, all_transactions),
+        "has_irregular_spike": get_has_irregular_spike(transaction, all_transactions),
+        "is_first_of_month": get_is_first_of_month(transaction),
     }
