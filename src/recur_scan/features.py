@@ -35,6 +35,11 @@ from recur_scan.features_asimi import (
 from recur_scan.features_asimi import (
     get_amount_features as get_amount_features_asimi,
 )
+from recur_scan.features_bassey import (
+    get_is_gym_membership,
+    get_is_streaming_service,
+    get_is_subscription,
+)
 from recur_scan.features_christopher import (
     detect_skipped_months,
     follows_regular_interval,
@@ -687,4 +692,8 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "transaction_density": get_transaction_density(all_transactions),
         "biweekly_interval": histogram["biweekly"],
         "monthly_interval": histogram["monthly"],
+        # Bassey's features
+        "is_subscription": get_is_subscription(transaction),
+        "is_streaming_service": get_is_streaming_service(transaction),
+        "is_gym_membership": get_is_gym_membership(transaction),
     }
