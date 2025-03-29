@@ -93,6 +93,45 @@ from recur_scan.features_emmanuel_ezechukwu2 import (
 from recur_scan.features_emmanuel_ezechukwu2 import (
     get_amount_features as get_amount_features_emmanuel2,
 )
+from recur_scan.features_felix import (
+    get_average_transaction_amount as get_average_transaction_amount_felix,
+)
+from recur_scan.features_felix import (
+    get_day as get_day_felix,
+)
+from recur_scan.features_felix import (
+    get_dispersion_transaction_amount as get_dispersion_transaction_amount_felix,
+)
+from recur_scan.features_felix import (
+    get_is_always_recurring as get_is_always_recurring_felix,
+)
+from recur_scan.features_felix import (
+    get_is_insurance as get_is_insurance_felix,
+)
+from recur_scan.features_felix import (
+    get_is_phone as get_is_phone_felix,
+)
+from recur_scan.features_felix import (
+    get_is_utility as get_is_utility_felix,
+)
+from recur_scan.features_felix import (
+    get_max_transaction_amount as get_max_transaction_amount_felix,
+)
+from recur_scan.features_felix import (
+    get_median_variation_transaction_amount,
+    get_month,
+    get_n_transactions_same_vendor,
+    get_transaction_rate,
+    get_transactions_interval_stability,
+    get_variation_ratio,
+    get_year,
+)
+from recur_scan.features_felix import (
+    get_min_transaction_amount as get_min_transaction_amount_felix,
+)
+from recur_scan.features_felix import (
+    get_transaction_intervals as get_transaction_intervals_felix,
+)
 from recur_scan.features_frank import (
     amount_coefficient_of_variation,
     amount_similarity,
@@ -518,4 +557,22 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "recurrence_confidence": get_recurrence_confidence(transaction, all_transactions),
         "median_period_days": get_median_period(transaction, all_transactions),
         "is_weekday_consistent": is_weekday_consistent(transaction, all_transactions),
+        # Felix's features
+        "n_transactions_same_vendor": get_n_transactions_same_vendor(transaction, all_transactions),
+        "max_transaction_amount_felix": get_max_transaction_amount_felix(all_transactions),
+        "min_transaction_amount_felix": get_min_transaction_amount_felix(all_transactions),
+        "is_phone_felix": get_is_phone_felix(transaction),
+        "month": get_month(transaction),
+        "day_felix": get_day_felix(transaction),
+        "year": get_year(transaction),
+        "is_insurance_felix": get_is_insurance_felix(transaction),
+        "is_utility_felix": get_is_utility_felix(transaction),
+        "is_always_recurring_felix": get_is_always_recurring_felix(transaction),
+        "median_variation_transaction_amount": get_median_variation_transaction_amount(transaction, all_transactions),
+        "variation_ratio": get_variation_ratio(transaction, all_transactions),
+        "transactions_interval_stability": get_transactions_interval_stability(transaction, all_transactions),
+        "average_transaction_amount_felix": get_average_transaction_amount_felix(transaction, all_transactions),
+        "dispersion_transaction_amount_felix": get_dispersion_transaction_amount_felix(transaction, all_transactions),
+        "transaction_rate": get_transaction_rate(transaction, all_transactions),
+        **get_transaction_intervals_felix(all_transactions),
     }
