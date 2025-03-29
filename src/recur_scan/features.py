@@ -1,5 +1,20 @@
 from collections import defaultdict
 
+from recur_scan.features_adeyinka import (
+    get_average_days_between_transactions,
+    get_outlier_score,
+    get_recurring_confidence_score,
+    get_same_amount_vendor_transactions,
+    get_subscription_keyword_score,
+    get_time_regularity_score,
+    get_transaction_amount_variance,
+)
+from recur_scan.features_adeyinka import (
+    get_is_always_recurring as get_is_always_recurring_adeyinka,
+)
+from recur_scan.features_adeyinka import (
+    get_n_transactions_days_apart as get_n_transactions_days_apart_adeyinka,
+)
 from recur_scan.features_asimi import (
     get_amount_category,
     get_amount_pattern_features,
@@ -575,4 +590,19 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "dispersion_transaction_amount_felix": get_dispersion_transaction_amount_felix(transaction, all_transactions),
         "transaction_rate": get_transaction_rate(transaction, all_transactions),
         **get_transaction_intervals_felix(all_transactions),
+        # Adeyinka's features
+        "avg_days_between_transactions_adeyinka": get_average_days_between_transactions(transaction, all_transactions),
+        "time_regularity_score_adeyinka": get_time_regularity_score(transaction, all_transactions),
+        "is_always_recurring_adeyinka": get_is_always_recurring_adeyinka(transaction),
+        "transaction_amount_variance_adeyinka": get_transaction_amount_variance(transaction, all_transactions),
+        "outlier_score_adeyinka": get_outlier_score(transaction, all_transactions),
+        "recurring_confidence_score_adeyinka": get_recurring_confidence_score(transaction, all_transactions),
+        "subscription_keyword_score_adeyinka": get_subscription_keyword_score(transaction),
+        "same_amount_vendor_transactions_adeyinka": get_same_amount_vendor_transactions(transaction, all_transactions),
+        "30_days_apart_exact_adeyinka": get_n_transactions_days_apart_adeyinka(transaction, all_transactions, 30, 0),
+        "30_days_apart_off_by_1_adeyinka": get_n_transactions_days_apart_adeyinka(transaction, all_transactions, 30, 1),
+        "14_days_apart_exact_adeyinka": get_n_transactions_days_apart_adeyinka(transaction, all_transactions, 14, 0),
+        "14_days_apart_off_by_1_adeyinka": get_n_transactions_days_apart_adeyinka(transaction, all_transactions, 14, 1),
+        "7_days_apart_exact_adeyinka": get_n_transactions_days_apart_adeyinka(transaction, all_transactions, 7, 0),
+        "7_days_apart_off_by_1_adeyinka": get_n_transactions_days_apart_adeyinka(transaction, all_transactions, 7, 1),
     }
