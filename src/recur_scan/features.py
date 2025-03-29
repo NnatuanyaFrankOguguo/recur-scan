@@ -191,6 +191,33 @@ from recur_scan.features_praise import (
 from recur_scan.features_praise import (
     get_average_transaction_amount as get_average_transaction_amount_praise,
 )
+from recur_scan.features_precious import (
+    amount_ends_in_00 as amount_ends_in_00_precious,
+)
+from recur_scan.features_precious import (
+    get_additional_features,
+    get_amount_variation_features,
+    get_recurring_frequency,
+    is_subscription_amount,
+)
+from recur_scan.features_precious import (
+    get_avg_days_between_same_merchant_amount as get_avg_days_between_same_merchant_amount_precious,
+)
+from recur_scan.features_precious import (
+    get_days_since_last_same_merchant_amount as get_days_since_last_same_merchant_amount_precious,
+)
+from recur_scan.features_precious import (
+    get_n_transactions_same_merchant_amount as get_n_transactions_same_merchant_amount_precious,
+)
+from recur_scan.features_precious import (
+    get_percent_transactions_same_merchant_amount as get_percent_transactions_same_merchant_amount_precious,
+)
+from recur_scan.features_precious import (
+    get_stddev_days_between_same_merchant_amount as get_stddev_days_between_same_merchant_amount_precious,
+)
+from recur_scan.features_precious import (
+    is_recurring_merchant as is_recurring_merchant_precious,
+)
 from recur_scan.features_samuel import (
     get_amount_std_dev,
     get_is_weekend_transaction,
@@ -435,4 +462,26 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "median_transaction_amount": get_median_transaction_amount(transaction, all_transactions),
         "is_weekend_transaction": get_is_weekend_transaction(transaction),
         "is_always_recurring_samuel": get_is_always_recurring_samuel(transaction),
+        # Precious's features
+        "amount_ends_in_00_precious": amount_ends_in_00_precious(transaction),
+        "is_recurring_merchant_precious": is_recurring_merchant_precious(transaction),
+        "n_transactions_same_merchant_amount_precious": get_n_transactions_same_merchant_amount_precious(
+            transaction, all_transactions
+        ),
+        "percent_transactions_same_merchant_amount_precious": get_percent_transactions_same_merchant_amount_precious(
+            transaction, all_transactions
+        ),
+        "avg_days_between_same_merchant_amount_precious": get_avg_days_between_same_merchant_amount_precious(
+            transaction, all_transactions
+        ),
+        "stddev_days_between_same_merchant_amount_precious": get_stddev_days_between_same_merchant_amount_precious(
+            transaction, all_transactions
+        ),
+        "days_since_last_same_merchant_amount_precious": get_days_since_last_same_merchant_amount_precious(
+            transaction, all_transactions
+        ),
+        "recurring_frequency": get_recurring_frequency(transaction, all_transactions),
+        "is_subscription_amount": is_subscription_amount(transaction),
+        **get_additional_features(transaction, all_transactions),
+        **get_amount_variation_features(transaction, all_transactions),
     }
