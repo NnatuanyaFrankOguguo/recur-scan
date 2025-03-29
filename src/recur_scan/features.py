@@ -117,6 +117,27 @@ from recur_scan.features_original import (
     get_transaction_z_score,
     parse_date,
 )
+from recur_scan.features_praise import (
+    amount_ends_in_00,
+    amount_ends_in_99,
+    get_avg_days_between_same_merchant_amount,
+    get_days_since_last_same_merchant_amount,
+    get_interval_variance_coefficient,
+    get_max_transaction_amount,
+    get_min_transaction_amount,
+    get_most_frequent_names,
+    get_n_transactions_same_merchant_amount,
+    get_percent_transactions_same_merchant_amount,
+    get_stddev_days_between_same_merchant_amount,
+    has_consistent_reference_codes,
+    has_incrementing_numbers,
+    is_expected_transaction_date,
+    is_recurring,
+    is_recurring_merchant,
+)
+from recur_scan.features_praise import (
+    get_average_transaction_amount as get_average_transaction_amount_praise,
+)
 from recur_scan.transactions import Transaction
 
 
@@ -287,4 +308,28 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "percent_transactions_within_amount_range": get_percent_transactions_within_amount_range(
             transaction, all_transactions
         ),
+        # Praise's features
+        "is_recurring_merchant": is_recurring_merchant(transaction),
+        "avg_days_between_same_merchant_amount": get_avg_days_between_same_merchant_amount(
+            transaction, all_transactions
+        ),
+        "average_transaction_amount_praise": get_average_transaction_amount_praise(all_transactions),
+        "max_transaction_amount": get_max_transaction_amount(all_transactions),
+        "min_transaction_amount": get_min_transaction_amount(all_transactions),
+        "most_frequent_names": len(get_most_frequent_names(all_transactions)),
+        "is_recurring_praise": is_recurring(transaction, all_transactions),
+        "amount_ends_in_99": amount_ends_in_99(transaction),
+        "amount_ends_in_00": amount_ends_in_00(transaction),
+        "n_transactions_same_merchant_amount": get_n_transactions_same_merchant_amount(transaction, all_transactions),
+        "percent_transactions_same_merchant_amount": get_percent_transactions_same_merchant_amount(
+            transaction, all_transactions
+        ),
+        "interval_variance_coefficient": get_interval_variance_coefficient(transaction, all_transactions),
+        "stddev_days_between_same_merchant_amount": get_stddev_days_between_same_merchant_amount(
+            transaction, all_transactions
+        ),
+        "days_since_last_same_merchant_amount": get_days_since_last_same_merchant_amount(transaction, all_transactions),
+        "is_expected_transaction_date": is_expected_transaction_date(transaction, all_transactions),
+        "has_incrementing_numbers": has_incrementing_numbers(transaction, all_transactions),
+        "has_consistent_reference_codes": has_consistent_reference_codes(transaction, all_transactions),
     }
