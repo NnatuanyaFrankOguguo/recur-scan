@@ -180,6 +180,16 @@ from recur_scan.features_original import (
     get_transaction_z_score,
     parse_date,
 )
+from recur_scan.features_osasere import (
+    get_day_of_month_consistency as get_day_of_month_consistency_osasere,
+)
+from recur_scan.features_osasere import (
+    get_day_of_month_variability,
+    get_median_period,
+    get_recurrence_confidence,
+    has_min_recurrence_period,
+    is_weekday_consistent,
+)
 from recur_scan.features_praise import (
     amount_ends_in_00,
     amount_ends_in_99,
@@ -501,4 +511,11 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         ),
         "get_transaction_same_frequency": get_transaction_frequency_happy(transaction, all_transactions),
         "get_day_of_month_consistency": get_day_of_month_consistency_happy(transaction, all_transactions),
+        # Osasere's features
+        "has_min_recurrence_period_osasere": has_min_recurrence_period(transaction, all_transactions),
+        "day_of_month_consistency_osasere": get_day_of_month_consistency_osasere(transaction, all_transactions),
+        "day_of_month_variability": get_day_of_month_variability(transaction, all_transactions),
+        "recurrence_confidence": get_recurrence_confidence(transaction, all_transactions),
+        "median_period_days": get_median_period(transaction, all_transactions),
+        "is_weekday_consistent": is_weekday_consistent(transaction, all_transactions),
     }
