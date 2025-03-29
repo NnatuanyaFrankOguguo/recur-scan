@@ -183,6 +183,12 @@ from recur_scan.features_frank import (
     vendor_recurrence_trend,
     weekly_spending_cycle,
 )
+from recur_scan.features_freedom import (
+    get_day_of_week,
+    get_days_until_next_transaction,
+    get_periodicity_confidence,
+    get_recurrence_streak,
+)
 from recur_scan.features_happy import (
     get_day_of_month_consistency as get_day_of_month_consistency_happy,
 )
@@ -631,4 +637,10 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "is_split_transaction": is_split_transaction(transaction, all_transactions),
         "is_price_trending_5pct": is_price_trending(transaction, all_transactions, 5),
         "is_price_trending_10pct": is_price_trending(transaction, all_transactions, 10),
+        # Freedom's features
+        "day_of_week_freedom": get_day_of_week(transaction),
+        "days_until_next_transaction": get_days_until_next_transaction(transaction, all_transactions),
+        "periodicity_confidence_30d": get_periodicity_confidence(transaction, all_transactions, 30),
+        "periodicity_confidence_7d": get_periodicity_confidence(transaction, all_transactions, 7),
+        "recurrence_streak": get_recurrence_streak(transaction, all_transactions),
     }
