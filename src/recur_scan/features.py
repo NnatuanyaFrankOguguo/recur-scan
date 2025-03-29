@@ -13,6 +13,23 @@ from recur_scan.features_christopher import (
     is_known_fixed_subscription,
     is_known_recurring_company,
 )
+from recur_scan.features_ebenezer import (
+    get_avg_amount_same_day_of_week,
+    get_avg_amount_same_month,
+    get_avg_amount_same_name,
+    get_n_transactions_same_month,
+    get_n_transactions_same_name,
+    get_n_transactions_same_user_id,
+    get_n_transactions_within_amount_range,
+    get_percent_transactions_same_day_of_week,
+    get_percent_transactions_same_month,
+    get_percent_transactions_same_name,
+    get_percent_transactions_same_user_id,
+    get_percent_transactions_within_amount_range,
+    get_std_amount_same_day_of_week,
+    get_std_amount_same_month,
+    get_std_amount_same_name,
+)
 from recur_scan.features_emmanuel_ezechukwu2 import (
     classify_subscription_tier,
     get_amount_features,
@@ -250,4 +267,24 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "coefficient_of_variation_nnanna": get_coefficient_of_variation_nnanna(transaction, all_transactions),
         "transaction_interval_consistency": get_transaction_interval_consistency(transaction, all_transactions),
         "average_transaction_amount": get_average_transaction_amount(transaction, all_transactions),
+        # Ebenezer's features
+        "n_transactions_same_name_ebenezer": get_n_transactions_same_name(transaction, all_transactions),
+        "percent_transactions_same_name": get_percent_transactions_same_name(transaction, all_transactions),
+        "avg_amount_same_name": get_avg_amount_same_name(transaction, all_transactions),
+        "std_amount_same_name": get_std_amount_same_name(transaction, all_transactions),
+        "n_transactions_same_month": get_n_transactions_same_month(transaction, all_transactions),
+        "percent_transactions_same_month": get_percent_transactions_same_month(transaction, all_transactions),
+        "avg_amount_same_month": get_avg_amount_same_month(transaction, all_transactions),
+        "std_amount_same_month": get_std_amount_same_month(transaction, all_transactions),
+        "n_transactions_same_user_id": get_n_transactions_same_user_id(transaction, all_transactions),
+        "percent_transactions_same_user_id": get_percent_transactions_same_user_id(transaction, all_transactions),
+        "percent_transactions_same_day_of_week": get_percent_transactions_same_day_of_week(
+            transaction, all_transactions
+        ),
+        "avg_amount_same_day_of_week": get_avg_amount_same_day_of_week(transaction, all_transactions),
+        "std_amount_same_day_of_week": get_std_amount_same_day_of_week(transaction, all_transactions),
+        "n_transactions_within_amount_range": get_n_transactions_within_amount_range(transaction, all_transactions),
+        "percent_transactions_within_amount_range": get_percent_transactions_within_amount_range(
+            transaction, all_transactions
+        ),
     }
