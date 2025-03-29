@@ -65,6 +65,20 @@ from recur_scan.features_ebenezer import (
     get_std_amount_same_month,
     get_std_amount_same_name,
 )
+from recur_scan.features_elliot import (
+    get_is_always_recurring as get_is_always_recurring_elliot,
+)
+from recur_scan.features_elliot import (
+    get_is_near_same_amount,
+    get_transaction_similarity,
+    is_auto_pay,
+    is_membership,
+    is_price_trending,
+    is_recurring_based_on_99,
+    is_split_transaction,
+    is_utility_bill,
+    is_weekday_transaction,
+)
 from recur_scan.features_emmanuel_ezechukwu1 import (
     get_amount_cv,
     get_days_between_std,
@@ -605,4 +619,16 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "14_days_apart_off_by_1_adeyinka": get_n_transactions_days_apart_adeyinka(transaction, all_transactions, 14, 1),
         "7_days_apart_exact_adeyinka": get_n_transactions_days_apart_adeyinka(transaction, all_transactions, 7, 0),
         "7_days_apart_off_by_1_adeyinka": get_n_transactions_days_apart_adeyinka(transaction, all_transactions, 7, 1),
+        # Elliot's features
+        "is_utility_elliot": is_utility_bill(transaction),
+        "is_always_recurring_elliot": get_is_always_recurring_elliot(transaction),
+        "is_auto_pay": is_auto_pay(transaction),
+        "is_membership": is_membership(transaction),
+        "is_near_same_amount": get_is_near_same_amount(transaction, all_transactions),
+        "is_recurring_based_on_99": is_recurring_based_on_99(transaction, all_transactions),
+        "transaction_similarity": get_transaction_similarity(transaction, all_transactions),
+        "is_weekday_transaction": is_weekday_transaction(transaction),
+        "is_split_transaction": is_split_transaction(transaction, all_transactions),
+        "is_price_trending_5pct": is_price_trending(transaction, all_transactions, 5),
+        "is_price_trending_10pct": is_price_trending(transaction, all_transactions, 10),
     }
