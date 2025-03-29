@@ -13,6 +13,16 @@ from recur_scan.features_christopher import (
     is_known_fixed_subscription,
     is_known_recurring_company,
 )
+from recur_scan.features_emmanuel_ezechukwu2 import (
+    classify_subscription_tier,
+    get_amount_features,
+    get_monthly_spending_trend,
+    get_recurrence_patterns,
+    get_recurring_consistency_score,
+    get_refund_features,
+    get_user_behavior_features,
+    validate_recurring_transaction,
+)
 from recur_scan.features_frank import (
     amount_coefficient_of_variation,
     amount_similarity,
@@ -208,4 +218,13 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         ),
         "transaction_pattern_complexity": transaction_pattern_complexity(merchant_trans, interval_stats),
         "date_irregularity_dominance": date_irregularity_dominance(merchant_trans, interval_stats, amount_stats),
+        # Emmanuel Ezechukwu (2)'s features
+        **get_recurrence_patterns(transaction, all_transactions),
+        **get_recurring_consistency_score(transaction, all_transactions),
+        "is_recurring": int(validate_recurring_transaction(transaction)),
+        "subscription_tier": classify_subscription_tier(transaction),
+        **get_amount_features(transaction, all_transactions),
+        **get_user_behavior_features(transaction, all_transactions),
+        **get_refund_features(transaction, all_transactions),
+        **get_monthly_spending_trend(transaction, all_transactions),
     }
