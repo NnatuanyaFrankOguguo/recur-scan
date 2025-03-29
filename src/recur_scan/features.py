@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from recur_scan.features_christopher import (
     detect_skipped_months,
     follows_regular_interval,
@@ -33,6 +35,32 @@ from recur_scan.features_frank import (
     vendor_recurrence_trend,
     weekly_spending_cycle,
 )
+from recur_scan.features_laurels import (
+    _aggregate_transactions,
+    _calculate_intervals,
+    _calculate_statistics,
+    date_irregularity_dominance,
+    day_consistency_score_feature,
+    day_of_week_feature,
+    identical_transaction_ratio_feature,
+    interval_variability_feature,
+    is_deposit_feature,
+    is_monthly_recurring_feature,
+    is_near_periodic_interval_feature,
+    is_single_transaction_feature,
+    is_varying_amount_recurring_feature,
+    low_amount_variation_feature,
+    merchant_amount_frequency_feature,
+    merchant_amount_std_feature,
+    merchant_interval_mean_feature,
+    merchant_interval_std_feature,
+    non_recurring_irregularity_score,
+    recurrence_likelihood_feature,
+    rolling_amount_mean_feature,
+    time_since_last_transaction_same_merchant_feature,
+    transaction_month_feature,
+    transaction_pattern_complexity,
+)
 from recur_scan.features_original import (
     get_ends_in_99,
     get_is_always_recurring,
@@ -46,12 +74,48 @@ from recur_scan.features_original import (
     get_pct_transactions_same_day,
     get_percent_transactions_same_amount,
     get_transaction_z_score,
+    parse_date,
 )
 from recur_scan.transactions import Transaction
 
 
 def get_features(transaction: Transaction, all_transactions: list[Transaction]) -> dict[str, float | int | bool]:
     """Get the features for a transaction"""
+    """Extract all features for a transaction by calling individual feature functions.
+    This prepares a dictionary of features for model training.
+
+    Args:
+        transaction (Transaction): The transaction to extract features for.
+        all_transactions (List[Transaction]): List of all transactions for context.
+
+    Returns:
+        Dict[str, Union[float, int]]: Dictionary mapping feature names to their computed values.
+    """
+    # Compute groups and amount counts internally
+    groups = _aggregate_transactions(all_transactions)
+    amount_counts: defaultdict[float, int] = defaultdict(int)
+    for t in all_transactions:
+        amount_counts[t.amount] += 1
+
+    # Extract user ID and merchant name from the transaction
+    user_id, merchant_name = transaction.user_id, transaction.name
+    # Get transactions for this user and merchant
+    merchant_trans = groups.get(user_id, {}).get(merchant_name, [])
+    # Sort transactions by date for chronological analysis
+    merchant_trans.sort(key=lambda x: x.date)
+
+    # Parse all dates for this merchant's transactions once
+    parsed_dates = []
+    for trans in merchant_trans:
+        date = parse_date(trans.date)
+        if date is not None:
+            parsed_dates.append(date)
+
+    # Calculate intervals and amounts for statistical analysis
+    intervals = _calculate_intervals(parsed_dates)
+    amounts = [trans.amount for trans in merchant_trans]
+    interval_stats = _calculate_statistics([float(i) for i in intervals])
+    amount_stats = _calculate_statistics(amounts)
 
     return {
         "n_transactions_same_amount": get_n_transactions_same_amount(transaction, all_transactions),
@@ -114,4 +178,34 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "median_interval": get_median_interval(all_transactions),
         "is_known_recurring_company": is_known_recurring_company(transaction.name),
         "is_known_fixed_subscription": is_known_fixed_subscription(transaction),
+        # Laurels' features
+        # "n_transactions_same_amount": n_transactions_same_amount_feature(transaction, amount_counts),
+        # "percent_transactions_same_amount": percent_transactions_same_amount_feature(
+        #     transaction, all_transactions, amount_counts
+        # ),
+        "identical_transaction_ratio": identical_transaction_ratio_feature(
+            transaction, all_transactions, merchant_trans
+        ),
+        "is_monthly_recurring": is_monthly_recurring_feature(merchant_trans),
+        "recurrence_likelihood": recurrence_likelihood_feature(merchant_trans, interval_stats, amount_stats),
+        "is_varying_amount_recurring": is_varying_amount_recurring_feature(interval_stats, amount_stats),
+        "day_consistency_score": day_consistency_score_feature(merchant_trans),
+        "is_near_periodic_interval": is_near_periodic_interval_feature(interval_stats),
+        "merchant_amount_std": merchant_amount_std_feature(amount_stats),
+        "merchant_interval_std": merchant_interval_std_feature(interval_stats),
+        "merchant_interval_mean": merchant_interval_mean_feature(interval_stats),
+        "time_since_last_transaction_same_merchant": time_since_last_transaction_same_merchant_feature(parsed_dates),
+        "is_deposit": is_deposit_feature(transaction, merchant_trans),
+        "day_of_week": day_of_week_feature(transaction),
+        "transaction_month": transaction_month_feature(transaction),
+        "rolling_amount_mean": rolling_amount_mean_feature(merchant_trans),
+        "low_amount_variation": low_amount_variation_feature(amount_stats),
+        "is_single_transaction": is_single_transaction_feature(merchant_trans),
+        "interval_variability": interval_variability_feature(interval_stats),
+        "merchant_amount_frequency": merchant_amount_frequency_feature(merchant_trans),
+        "non_recurring_irregularity_score": non_recurring_irregularity_score(
+            merchant_trans, interval_stats, amount_stats
+        ),
+        "transaction_pattern_complexity": transaction_pattern_complexity(merchant_trans, interval_stats),
+        "date_irregularity_dominance": date_irregularity_dominance(merchant_trans, interval_stats, amount_stats),
     }
