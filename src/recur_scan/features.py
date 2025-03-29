@@ -71,6 +71,20 @@ from recur_scan.features_laurels import (
     transaction_month_feature,
     transaction_pattern_complexity,
 )
+from recur_scan.features_nnanna import (
+    get_average_transaction_amount,
+    get_dispersion_transaction_amount,
+    get_mad_transaction_amount,
+    get_mobile_transaction,
+    get_time_interval_between_transactions,
+    get_transaction_interval_consistency,
+)
+from recur_scan.features_nnanna import (
+    get_coefficient_of_variation as get_coefficient_of_variation_nnanna,
+)
+from recur_scan.features_nnanna import (
+    get_transaction_frequency as get_transaction_frequency_nnanna,
+)
 from recur_scan.features_original import (
     get_ends_in_99,
     get_is_always_recurring,
@@ -227,4 +241,13 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         **get_user_behavior_features(transaction, all_transactions),
         **get_refund_features(transaction, all_transactions),
         **get_monthly_spending_trend(transaction, all_transactions),
+        # Nnanna's features
+        "time_interval_between_transactions": get_time_interval_between_transactions(transaction, all_transactions),
+        "mobile_company": get_mobile_transaction(transaction),
+        "transaction_frequency_nnanna": get_transaction_frequency_nnanna(transaction, all_transactions),
+        "transaction_amount_dispersion": get_dispersion_transaction_amount(transaction, all_transactions),
+        "mad_transaction_amount": get_mad_transaction_amount(transaction, all_transactions),
+        "coefficient_of_variation_nnanna": get_coefficient_of_variation_nnanna(transaction, all_transactions),
+        "transaction_interval_consistency": get_transaction_interval_consistency(transaction, all_transactions),
+        "average_transaction_amount": get_average_transaction_amount(transaction, all_transactions),
     }
