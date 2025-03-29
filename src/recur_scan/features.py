@@ -127,6 +127,32 @@ from recur_scan.features_emmanuel_ezechukwu2 import (
 from recur_scan.features_emmanuel_ezechukwu2 import (
     get_amount_features as get_amount_features_emmanuel2,
 )
+from recur_scan.features_ernest import (
+    get_average_transaction_amount as get_average_transaction_amount_ernest,
+)
+from recur_scan.features_ernest import (
+    get_is_biweekly,
+    get_is_fixed_amount,
+    get_is_high_frequency_vendor,
+    get_is_monthly,
+    get_is_quarterly,
+    get_is_recurring_vendor,
+    get_is_round_amount,
+    get_is_same_day_of_month,
+    get_is_small_amount,
+    get_is_subscription_based,
+    get_is_weekly,
+    get_recurring_interval_score,
+    get_transaction_gap_stats,
+    get_vendor_amount_variance,
+    get_vendor_transaction_count,
+)
+from recur_scan.features_ernest import (
+    get_is_weekend_transaction as get_is_weekend_transaction_ernest,
+)
+from recur_scan.features_ernest import (
+    get_transaction_frequency as get_transaction_frequency_ernest,
+)
 from recur_scan.features_felix import (
     get_average_transaction_amount as get_average_transaction_amount_felix,
 )
@@ -741,4 +767,23 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "is_fixed_interval": get_is_fixed_interval(transaction, all_transactions),
         "has_irregular_spike": get_has_irregular_spike(transaction, all_transactions),
         "is_first_of_month": get_is_first_of_month(transaction),
+        # Ernest's features
+        "is_weekly": get_is_weekly(transaction, all_transactions),
+        "is_monthly": get_is_monthly(transaction, all_transactions),
+        "is_biweekly": get_is_biweekly(transaction, all_transactions),
+        "vendor_transaction_count": get_vendor_transaction_count(transaction, all_transactions),
+        "vendor_amount_variance": get_vendor_amount_variance(transaction, all_transactions),
+        "is_round_amount": get_is_round_amount(transaction),
+        "is_small_amount": get_is_small_amount(transaction),
+        "transaction_gap_mean": get_transaction_gap_stats(transaction, all_transactions)[0],
+        "transaction_frequency_ernest": get_transaction_frequency_ernest(transaction, all_transactions),
+        "is_recurring_vendor": get_is_recurring_vendor(transaction),
+        "is_fixed_amount": get_is_fixed_amount(transaction, all_transactions),
+        "recurring_interval_score": get_recurring_interval_score(transaction, all_transactions),
+        "is_weekend_transaction_ernest": get_is_weekend_transaction_ernest(transaction),
+        "is_high_frequency_vendor": get_is_high_frequency_vendor(transaction, all_transactions),
+        "is_same_day_of_month": get_is_same_day_of_month(transaction, all_transactions),
+        "is_quarterly": get_is_quarterly(transaction, all_transactions),
+        "average_transaction_amount_ernest": get_average_transaction_amount_ernest(transaction, all_transactions),
+        "is_subscription_based": get_is_subscription_based(transaction),
     }
