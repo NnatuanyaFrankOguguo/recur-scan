@@ -256,6 +256,22 @@ from recur_scan.features_laurels import (
     transaction_month_feature,
     transaction_pattern_complexity,
 )
+from recur_scan.features_naomi import (
+    get_irregular_periodicity,
+    get_irregular_periodicity_with_tolerance,
+    get_n_same_name_transactions,
+    get_time_between_transactions,
+    get_transaction_amount_stability,
+    get_transaction_time_of_month,
+    get_vendor_recurrence_consistency,
+    get_vendor_recurring_ratio,
+)
+from recur_scan.features_naomi import (
+    get_transaction_frequency as get_transaction_frequency_naomi,
+)
+from recur_scan.features_naomi import (
+    get_user_transaction_frequency as get_user_transaction_frequency_naomi,
+)
 from recur_scan.features_nnanna import (
     get_average_transaction_amount,
     get_dispersion_transaction_amount,
@@ -786,4 +802,15 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "is_quarterly": get_is_quarterly(transaction, all_transactions),
         "average_transaction_amount_ernest": get_average_transaction_amount_ernest(transaction, all_transactions),
         "is_subscription_based": get_is_subscription_based(transaction),
+        # Naomi's features
+        "transaction_time_of_month": get_transaction_time_of_month(transaction),
+        "transaction_amount_stability": get_transaction_amount_stability(transaction, all_transactions),
+        "time_between_transactions": get_time_between_transactions(transaction, all_transactions),
+        "transaction_frequency_naomi": get_transaction_frequency_naomi(transaction, all_transactions),
+        "n_same_name_transactions": get_n_same_name_transactions(transaction, all_transactions),
+        "irregular_periodicity": get_irregular_periodicity(transaction, all_transactions),
+        "irregular_periodicity_with_tolerance": get_irregular_periodicity_with_tolerance(transaction, all_transactions),
+        "user_transaction_frequency_naomi": get_user_transaction_frequency_naomi(transaction.user_id, all_transactions),
+        "vendor_recurring_ratio": get_vendor_recurring_ratio(transaction, all_transactions),
+        "vendor_recurrence_consistency": get_vendor_recurrence_consistency(transaction, all_transactions),
     }
