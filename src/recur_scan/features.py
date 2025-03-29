@@ -1,5 +1,25 @@
 from collections import defaultdict
 
+from recur_scan.features_asimi import (
+    get_amount_category,
+    get_amount_pattern_features,
+    get_temporal_consistency_features,
+    get_user_recurring_vendor_count,
+    get_user_specific_features,
+    get_user_transaction_frequency,
+    get_user_vendor_interaction_count,
+    get_user_vendor_recurrence_rate,
+    get_user_vendor_relationship_features,
+    get_user_vendor_transaction_count,
+    get_vendor_amount_std,
+    get_vendor_recurrence_profile,
+    get_vendor_recurring_user_count,
+    get_vendor_transaction_frequency,
+    is_valid_recurring_transaction,
+)
+from recur_scan.features_asimi import (
+    get_amount_features as get_amount_features_asimi,
+)
 from recur_scan.features_christopher import (
     detect_skipped_months,
     follows_regular_interval,
@@ -63,13 +83,15 @@ from recur_scan.features_emmanuel_ezechukwu1 import (
 )
 from recur_scan.features_emmanuel_ezechukwu2 import (
     classify_subscription_tier,
-    get_amount_features,
     get_monthly_spending_trend,
     get_recurrence_patterns,
     get_recurring_consistency_score,
     get_refund_features,
     get_user_behavior_features,
     validate_recurring_transaction,
+)
+from recur_scan.features_emmanuel_ezechukwu2 import (
+    get_amount_features as get_amount_features_emmanuel2,
 )
 from recur_scan.features_frank import (
     amount_coefficient_of_variation,
@@ -306,7 +328,7 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         **get_recurring_consistency_score(transaction, all_transactions),
         "is_recurring": int(validate_recurring_transaction(transaction)),
         "subscription_tier": classify_subscription_tier(transaction),
-        **get_amount_features(transaction, all_transactions),
+        **get_amount_features_emmanuel2(transaction, all_transactions),
         **get_user_behavior_features(transaction, all_transactions),
         **get_refund_features(transaction, all_transactions),
         **get_monthly_spending_trend(transaction, all_transactions),
@@ -379,4 +401,21 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "is_insurance_emmanuel1": int(get_is_insurance_emmanuel1(transaction)),
         "is_utility_emmanuel1": int(get_is_utility_emmanuel1(transaction)),
         "is_phone_emmanuel1": int(get_is_phone_emmanuel1(transaction)),
+        # Asimi's features
+        **get_amount_features_asimi(transaction),
+        **get_user_recurring_vendor_count(transaction, all_transactions),
+        **get_user_transaction_frequency(transaction, all_transactions),
+        **get_vendor_amount_std(transaction, all_transactions),
+        **get_vendor_recurring_user_count(transaction, all_transactions),
+        **get_vendor_transaction_frequency(transaction, all_transactions),
+        **get_user_vendor_transaction_count(transaction, all_transactions),
+        **get_user_vendor_recurrence_rate(transaction, all_transactions),
+        **get_user_vendor_interaction_count(transaction, all_transactions),
+        **get_amount_category(transaction),
+        **get_amount_pattern_features(transaction, all_transactions),
+        **get_temporal_consistency_features(transaction, all_transactions),
+        **get_vendor_recurrence_profile(transaction, all_transactions),
+        **get_user_vendor_relationship_features(transaction, all_transactions),
+        "is_recurring_asimi": is_valid_recurring_transaction(transaction),
+        **get_user_specific_features(transaction, all_transactions),
     }
