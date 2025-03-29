@@ -323,6 +323,29 @@ from recur_scan.features_samuel import (
 from recur_scan.features_samuel import (
     get_transaction_frequency as get_transaction_frequency_samuel,
 )
+from recur_scan.features_tife import (
+    get_amount_cluster_count,
+    get_amount_range,
+    get_amount_relative_change,
+    get_amount_variability,
+    get_days_since_last_same_amount,
+    get_dominant_interval_strength,
+    get_interval_consistency,
+    get_interval_histogram,
+    get_interval_mode,
+    get_merchant_amount_signature,
+    get_merchant_name_frequency,
+    get_near_amount_consistency,
+    get_normalized_interval_consistency,
+    get_transaction_count,
+    get_transaction_density,
+)
+from recur_scan.features_tife import (
+    get_amount_stability_score as get_amount_stability_score_tife,
+)
+from recur_scan.features_tife import (
+    get_transaction_frequency as get_transaction_frequency_tife,
+)
 from recur_scan.transactions import Transaction
 
 
@@ -363,6 +386,8 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
     amounts = [trans.amount for trans in merchant_trans]
     interval_stats = _calculate_statistics([float(i) for i in intervals])
     amount_stats = _calculate_statistics(amounts)
+
+    histogram = get_interval_histogram(all_transactions)
 
     return {
         "n_transactions_same_amount": get_n_transactions_same_amount(transaction, all_transactions),
@@ -643,4 +668,23 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "periodicity_confidence_30d": get_periodicity_confidence(transaction, all_transactions, 30),
         "periodicity_confidence_7d": get_periodicity_confidence(transaction, all_transactions, 7),
         "recurrence_streak": get_recurrence_streak(transaction, all_transactions),
+        # Tife's features
+        "transaction_frequency_tife": get_transaction_frequency_tife(all_transactions),
+        "interval_consistency": get_interval_consistency(all_transactions),
+        "amount_variability": get_amount_variability(all_transactions),
+        "amount_range": get_amount_range(all_transactions),
+        "transaction_count": get_transaction_count(all_transactions),
+        "interval_mode": get_interval_mode(all_transactions),
+        "normalized_interval_consistency": get_normalized_interval_consistency(all_transactions),
+        "days_since_last_same_amount": get_days_since_last_same_amount(transaction, all_transactions),
+        "amount_relative_change": get_amount_relative_change(transaction, all_transactions),
+        "merchant_name_frequency": get_merchant_name_frequency(transaction, all_transactions),
+        "amount_stability_score_tife": get_amount_stability_score_tife(all_transactions),
+        "dominant_interval_strength": get_dominant_interval_strength(all_transactions),
+        "near_amount_consistency": get_near_amount_consistency(transaction, all_transactions),
+        "merchant_amount_signature": get_merchant_amount_signature(transaction, all_transactions),
+        "amount_cluster_count": get_amount_cluster_count(transaction, all_transactions),
+        "transaction_density": get_transaction_density(all_transactions),
+        "biweekly_interval": histogram["biweekly"],
+        "monthly_interval": histogram["monthly"],
     }
