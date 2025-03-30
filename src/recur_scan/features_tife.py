@@ -8,8 +8,8 @@ import numpy as np
 from numpy import ndarray
 from scipy.stats import mode
 
-from recur_scan.features_original import parse_date
 from recur_scan.transactions import Transaction
+from recur_scan.utils import parse_date
 
 
 def get_transaction_frequency(all_transactions: list[Transaction]) -> float:

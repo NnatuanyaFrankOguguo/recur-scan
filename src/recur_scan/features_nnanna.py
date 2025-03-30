@@ -129,23 +129,3 @@ def get_average_transaction_amount(transaction: Transaction, all_transactions: l
     if not vendor_transactions:
         return 0.0  # Return 0 if there are no transactions for the vendor
     return float(np.mean(vendor_transactions))  # Return the average amount
-
-
-def get_features(
-    transaction: Transaction, all_transactions: list[Transaction]
-) -> dict[str, float | int | bool | list[str]]:
-    """Get a dictionary of features for a transaction"""
-    return {
-        "time_interval_between_transactions": get_time_interval_between_transactions(
-            transaction, all_transactions
-        ),  # Average time interval between transactions with the same amount
-        "mobile_company": get_mobile_transaction(transaction),  # Check if the transaction is from a mobile company
-        "transaction_frequency": get_transaction_frequency(
-            transaction, all_transactions
-        ),  # Frequency of transactions for the same vendor
-        "transaction_amount": get_dispersion_transaction_amount(transaction, all_transactions),
-        "mad_transaction_amount": get_mad_transaction_amount(transaction, all_transactions),
-        "coefficient_of_variation": get_coefficient_of_variation(transaction, all_transactions),
-        "transaction_interval_consistency": get_transaction_interval_consistency(transaction, all_transactions),
-        "average_transaction_amount": get_average_transaction_amount(transaction, all_transactions),
-    }

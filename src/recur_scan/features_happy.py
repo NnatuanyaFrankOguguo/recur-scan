@@ -1,5 +1,5 @@
-from recur_scan.features_original import get_day, parse_date
 from recur_scan.transactions import Transaction
+from recur_scan.utils import get_day, parse_date
 
 
 def get_n_transactions_same_description(transaction: Transaction, all_transactions: list[Transaction]) -> int:

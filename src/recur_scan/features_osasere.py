@@ -1,7 +1,7 @@
 import numpy as np
 
-from recur_scan.features_original import get_day, parse_date
 from recur_scan.transactions import Transaction
+from recur_scan.utils import get_day, parse_date
 
 
 def has_min_recurrence_period(

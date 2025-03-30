@@ -6,8 +6,8 @@ from statistics import StatisticsError, mean, median, stdev
 
 import numpy as np
 
-from recur_scan.features_original import parse_date
 from recur_scan.transactions import Transaction
+from recur_scan.utils import parse_date
 
 
 def frequency_features(all_transactions: list[Transaction]) -> dict:

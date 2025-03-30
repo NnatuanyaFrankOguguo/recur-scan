@@ -1,7 +1,7 @@
 from statistics import StatisticsError, median, stdev
 
-from recur_scan.features_original import parse_date
 from recur_scan.transactions import Transaction
+from recur_scan.utils import parse_date
 
 
 def get_transaction_gaps(all_transactions: list[Transaction]) -> list[int]:

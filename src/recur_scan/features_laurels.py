@@ -3,8 +3,8 @@ from datetime import date, datetime
 import numpy as np
 from scipy.stats import entropy
 
-from recur_scan.features_original import parse_date
 from recur_scan.transactions import Transaction
+from recur_scan.utils import parse_date
 
 # Helper Functions
 

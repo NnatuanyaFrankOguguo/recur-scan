@@ -3,8 +3,8 @@ import re
 import numpy as np
 import pandas as pd
 
-from recur_scan.features_original import parse_date
 from recur_scan.transactions import Transaction
+from recur_scan.utils import parse_date
 
 
 def get_is_always_recurring(transaction: Transaction) -> bool:
@@ -163,25 +163,6 @@ def get_pct_transactions_days_apart(
         return 0.0
     n_txs = get_n_transactions_days_apart(transaction, all_transactions, n_days_apart, n_days_off)
     return n_txs / len(all_transactions)
-
-
-def get_features(transaction: Transaction, all_transactions: list[Transaction]) -> dict[str, float | int]:
-    """Return a feature dictionary for the transaction."""
-    return {
-        "n_transactions_same_amount": get_n_transactions_same_amount(transaction, all_transactions),
-        "percent_transactions_same_amount": get_percent_transactions_same_amount(transaction, all_transactions),
-        "days_between_std": get_days_between_std(transaction, all_transactions),
-        "amount_cv": get_amount_cv(transaction, all_transactions),
-        "day_of_month_consistency": get_day_of_month_consistency(transaction, all_transactions),
-        "exact_amount_count": get_exact_amount_count(transaction, all_transactions),
-        "has_recurring_keyword": get_has_recurring_keyword(transaction),
-        "is_always_recurring": int(get_is_always_recurring(transaction)),
-        "n_transactions_30_days_apart": get_n_transactions_days_apart(transaction, all_transactions, 30, 2),
-        "is_convenience_store": get_is_convenience_store(transaction),
-        "is_insurance": int(get_is_insurance(transaction)),
-        "is_utility": int(get_is_utility(transaction)),
-        "is_phone": int(get_is_phone(transaction)),
-    }
 
 
 def get_day_of_month_consistency(transaction: Transaction, all_transactions: list[Transaction]) -> float:

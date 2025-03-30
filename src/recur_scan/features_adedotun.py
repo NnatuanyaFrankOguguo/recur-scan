@@ -1,8 +1,8 @@
 import re
 from collections import defaultdict
 
-from recur_scan.features_original import parse_date
 from recur_scan.transactions import Transaction
+from recur_scan.utils import parse_date
 
 INSURANCE_PATTERN = re.compile(r"\b(insurance|insur|insuranc)\b", re.IGNORECASE)
 UTILITY_PATTERN = re.compile(r"\b(utility|utilit|energy)\b", re.IGNORECASE)

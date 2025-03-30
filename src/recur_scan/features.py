@@ -307,7 +307,6 @@ from recur_scan.features_original import (
     get_pct_transactions_same_day,
     get_percent_transactions_same_amount,
     get_transaction_z_score,
-    parse_date,
 )
 from recur_scan.features_osasere import (
     get_day_of_month_consistency as get_day_of_month_consistency_osasere,
@@ -444,6 +443,7 @@ from recur_scan.features_tife import (
     get_transaction_frequency as get_transaction_frequency_tife,
 )
 from recur_scan.transactions import Transaction
+from recur_scan.utils import parse_date
 
 
 def get_features(transaction: Transaction, all_transactions: list[Transaction]) -> dict[str, float | int | bool]:
