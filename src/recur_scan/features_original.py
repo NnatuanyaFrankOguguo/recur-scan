@@ -119,7 +119,7 @@ def get_pct_transactions_same_day(
 
 def get_ends_in_99(transaction: Transaction) -> bool:
     """Check if the transaction amount ends in 99"""
-    return (transaction.amount * 100) % 100 == 99
+    return abs((transaction.amount * 100) % 100 - 99) < 0.001
 
 
 def get_n_transactions_same_amount(transaction: Transaction, all_transactions: list[Transaction]) -> int:

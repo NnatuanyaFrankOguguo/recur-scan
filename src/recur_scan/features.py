@@ -1,5 +1,13 @@
 from collections import defaultdict
 
+from recur_scan.features_adedotun import (
+    compute_recurring_inputs_at,
+    get_is_always_recurring_at,
+    get_is_communication_or_energy_at,
+    get_percent_transactions_same_amount_tolerant,
+    is_recurring_allowance_at,
+    is_recurring_core_at,
+)
 from recur_scan.features_adeyinka import (
     get_average_days_between_transactions,
     get_outlier_score,
@@ -456,6 +464,10 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
 
     histogram = get_interval_histogram(all_transactions)
 
+    vendor_txns, user_vendor_txns, preprocessed = compute_recurring_inputs_at(transaction, all_transactions)
+    date_obj = preprocessed["date_objects"][transaction]
+    total_txns = len(vendor_txns)
+
     return {
         "n_transactions_same_amount": get_n_transactions_same_amount(transaction, all_transactions),
         "percent_transactions_same_amount": get_percent_transactions_same_amount(transaction, all_transactions),
@@ -500,8 +512,6 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         **detect_subscription_pattern(all_transactions),  # Merges subscription-based features
         **get_enhanced_features(transaction, all_transactions, len(all_transactions)),  # Merges new enhanced features
         **get_transaction_stability_features(all_transactions),  # Merges new stability-based features
-        # "days_since_last_transaction": get_days_since_last_transaction(transaction, all_transactions),
-        # **measure_transaction_freq
         # Christopher's features
         "n_transactions_same_name": len(all_transactions),
         "n_transactions_same_amount_chris": get_n_transactions_same_amount_chris(transaction, all_transactions),
@@ -518,10 +528,6 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "is_known_recurring_company": is_known_recurring_company(transaction.name),
         "is_known_fixed_subscription": is_known_fixed_subscription(transaction),
         # Laurels' features
-        # "n_transactions_same_amount": n_transactions_same_amount_feature(transaction, amount_counts),
-        # "percent_transactions_same_amount": percent_transactions_same_amount_feature(
-        #     transaction, all_transactions, amount_counts
-        # ),
         "identical_transaction_ratio": identical_transaction_ratio_feature(
             transaction, all_transactions, merchant_trans
         ),
@@ -813,4 +819,22 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "user_transaction_frequency_naomi": get_user_transaction_frequency_naomi(transaction.user_id, all_transactions),
         "vendor_recurring_ratio": get_vendor_recurring_ratio(transaction, all_transactions),
         "vendor_recurrence_consistency": get_vendor_recurrence_consistency(transaction, all_transactions),
+        # Adedotun's features
+        "percent_transactions_same_amount_tolerant_at": get_percent_transactions_same_amount_tolerant(
+            transaction, vendor_txns
+        ),
+        "is_always_recurring_at": get_is_always_recurring_at(transaction),
+        "is_communication_or_energy_at": get_is_communication_or_energy_at(transaction),
+        "is_recurring_monthly_at": is_recurring_core_at(transaction, vendor_txns, preprocessed, 30, 4, 2),
+        "is_recurring_weekly_at": is_recurring_core_at(transaction, vendor_txns, preprocessed, 7, 2, 2),
+        "is_recurring_user_vendor_at": is_recurring_core_at(transaction, user_vendor_txns, preprocessed, 30, 4, 2),
+        "day_consistency": sum(1 for t in vendor_txns if abs(date_obj.day - preprocessed["date_objects"][t].day) <= 2)
+        / total_txns
+        if total_txns
+        else 0.0,
+        "amount_stability": (sum((t.amount - transaction.amount) ** 2 for t in vendor_txns) / total_txns) ** 0.5
+        / transaction.amount
+        if total_txns and transaction.amount
+        else 0.0,
+        "is_recurring_allowance_at": is_recurring_allowance_at(transaction, all_transactions, 30, 2, 2),
     }
