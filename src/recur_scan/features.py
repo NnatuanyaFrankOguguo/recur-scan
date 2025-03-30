@@ -398,6 +398,28 @@ from recur_scan.features_samuel import (
 from recur_scan.features_samuel import (
     get_transaction_frequency as get_transaction_frequency_samuel,
 )
+from recur_scan.features_segun import (
+    get_average_transaction_amount as get_average_transaction_amount_segun,
+)
+from recur_scan.features_segun import (
+    get_average_transaction_interval,
+    get_total_transaction_amount,
+    get_transaction_amount_frequency,
+    get_transaction_amount_median,
+    get_transaction_amount_std,
+    get_transaction_day_of_week,
+    get_transaction_time_of_day,
+    get_unique_transaction_amount_count,
+)
+from recur_scan.features_segun import (
+    get_max_transaction_amount as get_max_transaction_amount_segun,
+)
+from recur_scan.features_segun import (
+    get_min_transaction_amount as get_min_transaction_amount_segun,
+)
+from recur_scan.features_segun import (
+    get_transaction_amount_range as get_transaction_amount_range_segun,
+)
 from recur_scan.features_tife import (
     get_amount_cluster_count,
     get_amount_range,
@@ -837,4 +859,17 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         if total_txns and transaction.amount
         else 0.0,
         "is_recurring_allowance_at": is_recurring_allowance_at(transaction, all_transactions, 30, 2, 2),
+        # Segun's features
+        "total_transaction_amount_segun": get_total_transaction_amount(all_transactions),
+        "average_transaction_amount_segun": get_average_transaction_amount_segun(all_transactions),
+        "max_transaction_amount_segun": get_max_transaction_amount_segun(all_transactions),
+        "min_transaction_amount_segun": get_min_transaction_amount_segun(all_transactions),
+        "transaction_amount_std_segun": get_transaction_amount_std(all_transactions),
+        "transaction_amount_median_segun": get_transaction_amount_median(all_transactions),
+        "transaction_amount_range_segun": get_transaction_amount_range_segun(all_transactions),
+        "unique_transaction_amount_count": get_unique_transaction_amount_count(all_transactions),
+        "transaction_amount_frequency": get_transaction_amount_frequency(transaction, all_transactions),
+        "transaction_day_of_week_segun": get_transaction_day_of_week(transaction),
+        "transaction_time_of_day": get_transaction_time_of_day(transaction),
+        "average_transaction_interval": get_average_transaction_interval(all_transactions),
     }
