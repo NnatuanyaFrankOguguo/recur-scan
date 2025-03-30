@@ -442,6 +442,7 @@ from recur_scan.features_tife import (
 from recur_scan.features_tife import (
     get_transaction_frequency as get_transaction_frequency_tife,
 )
+from recur_scan.features_victor import get_avg_days_between
 from recur_scan.transactions import Transaction
 from recur_scan.utils import parse_date
 
@@ -872,4 +873,6 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "transaction_day_of_week_segun": get_transaction_day_of_week(transaction),
         "transaction_time_of_day": get_transaction_time_of_day(transaction),
         "average_transaction_interval": get_average_transaction_interval(all_transactions),
+        # Victor's features
+        "avg_days_between": get_avg_days_between(all_transactions),
     }
