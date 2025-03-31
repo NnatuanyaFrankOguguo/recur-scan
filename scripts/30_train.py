@@ -20,7 +20,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.feature_selection import RFECV
 from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score
-from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold, train_test_split
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, StratifiedKFold, train_test_split
 from tqdm import tqdm
 
 from recur_scan.features import get_features
@@ -31,6 +31,7 @@ from recur_scan.transactions import group_transactions, read_labeled_transaction
 
 n_cv_folds = 5  # number of cross-validation folds, could be 5
 do_hyperparameter_optimization = True  # set to False to use the default hyperparameters
+search_type = "grid"  # "grid" or "random"
 n_hpo_iters = 200  # number of hyperparameter optimization iterations
 n_jobs = -1  # number of jobs to run in parallel (set to 1 if your laptop gets too hot)
 
@@ -100,35 +101,39 @@ print(X_selected.shape)
 if do_hyperparameter_optimization:
     # Define parameter grid
     param_dist = {
-        "n_estimators": [10, 20, 50, 100, 200, 500, 1000],
-        "max_depth": [10, 20, 30, 40, 50, None],
-        "min_samples_split": [2, 5, 10, 20, 50, 70, 100],
-        "min_samples_leaf": [1, 2, 4, 8, 16],
-        "max_features": ["sqrt", "log2", None],
-        "bootstrap": [True, False],
+        "n_estimators": [200, 300, 400, 500],  # [10, 20, 50, 100, 200, 500, 1000],
+        "max_depth": [20, 30, 40, 50],  # [10, 20, 30, 40, 50, None],
+        "min_samples_split": [5],  # [2, 5, 10],
+        "min_samples_leaf": [8],  # [1, 2, 4, 8, 16],
+        "max_features": ["sqrt"],
+        "bootstrap": [False],
     }
 
-    # Random search
+    # search for the best hyperparameters
     model = RandomForestClassifier(random_state=42, n_jobs=n_jobs)
-    random_search = RandomizedSearchCV(
-        model, param_dist, n_iter=n_hpo_iters, cv=n_cv_folds, scoring="f1", n_jobs=n_jobs, verbose=3
-    )
-    random_search.fit(X_selected, y)
-    logger.info(f"Best F1 score: {random_search.best_score_}")
+    if search_type == "grid":
+        search = GridSearchCV(model, param_dist, cv=n_cv_folds, scoring="f1", n_jobs=n_jobs, verbose=3)
+    else:
+        search = RandomizedSearchCV(
+            model, param_dist, n_iter=n_hpo_iters, cv=n_cv_folds, scoring="f1", n_jobs=n_jobs, verbose=3
+        )
+    print(f"Searching for best hyperparameters with {search_type} search")
+    search.fit(X_selected, y)
+    logger.info(f"Best F1 score: {search.best_score_}")
 
     print("Best Hyperparameters:")
-    for param, value in random_search.best_params_.items():
+    for param, value in search.best_params_.items():
         print(f"  {param}: {value}")
 
-    best_params = random_search.best_params_
+    best_params = search.best_params_
 else:
     # default hyperparameters
     best_params = {
-        "n_estimators": 20,
-        "min_samples_split": 50,
-        "min_samples_leaf": 4,
+        "n_estimators": 500,
+        "min_samples_split": 5,
+        "min_samples_leaf": 8,
         "max_features": "sqrt",
-        "max_depth": 30,
+        "max_depth": 40,
         "bootstrap": False,
     }
 

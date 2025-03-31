@@ -1140,6 +1140,7 @@ dependencies = [
     { name = "scipy" },
     { name = "shap" },
     { name = "thefuzz" },
+    { name = "tqdm" },
 ]
 
 [package.dev-dependencies]
@@ -1169,6 +1170,7 @@ requires-dist = [
     { name = "scipy", specifier = ">=1.15.2" },
     { name = "shap", specifier = ">=0.47.0" },
     { name = "thefuzz", specifier = ">=0.22.1" },
+    { name = "tqdm", specifier = ">=4.67.1" },
 ]
 
 [package.metadata.requires-dev]
