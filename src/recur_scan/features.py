@@ -92,6 +92,13 @@ from recur_scan.features_elliot import (
     is_utility_bill,
     is_weekday_transaction,
 )
+from recur_scan.features_emmanuel_eze import (
+    detect_sequence_patterns,
+    get_recurring_transaction_confidence,
+)
+from recur_scan.features_emmanuel_eze import (
+    get_is_recurring as get_is_recurring_emmanuel_eze,
+)
 from recur_scan.features_emmanuel_ezechukwu1 import (
     get_amount_cv,
     get_days_between_std,
@@ -506,6 +513,8 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
     date_obj = preprocessed["date_objects"][transaction]
     total_txns = len(vendor_txns)
 
+    sequence_features = detect_sequence_patterns(transaction, all_transactions)
+
     return {
         "n_transactions_same_amount": get_n_transactions_same_amount(transaction, all_transactions),
         "percent_transactions_same_amount": get_percent_transactions_same_amount(transaction, all_transactions),
@@ -905,4 +914,11 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "average_transaction_interval": get_average_transaction_interval(all_transactions),
         # Victor's features
         "avg_days_between": get_avg_days_between(all_transactions),
+        # Emmanuel Eze's features
+        "is_recurring_emmanuel_eze": get_is_recurring_emmanuel_eze(transaction, all_transactions),
+        "recurring_transaction_confidence": get_recurring_transaction_confidence(transaction, all_transactions),
+        "sequence_confidence": sequence_features["sequence_confidence"],
+        "is_sequence_weekly": 1.0 if sequence_features["sequence_pattern"] == "weekly" else 0.0,
+        "is_sequence_monthly": 1.0 if sequence_features["sequence_pattern"] == "monthly" else 0.0,
+        "sequence_length": sequence_features["sequence_length"],
     }
