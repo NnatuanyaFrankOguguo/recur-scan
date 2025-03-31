@@ -10,25 +10,42 @@ from recur_scan.transactions import Transaction
 from recur_scan.utils import parse_date
 
 
-def frequency_features(all_transactions: list[Transaction]) -> dict:
-    """Computes transaction frequency metrics (per month & per week)."""
+def transactions_per_month(all_transactions: list[Transaction]) -> float:
+    """Calculates the average transactions per month with consistency check."""
     if not all_transactions:
-        return {"transactions_per_month": 0.0, "transactions_per_week": 0.0}
+        return 0.0
 
-    # Convert all transaction dates from strings to date objects
-    transaction_dates = [parse_date(t.date) for t in all_transactions]
+    transaction_dates = sorted(parse_date(t.date) for t in all_transactions)
+    min_date, max_date = transaction_dates[0], transaction_dates[-1]
+    total_months = (max_date.year - min_date.year) * 12 + (max_date.month - min_date.month) + 1
 
-    min_date = min(transaction_dates)
-    max_date = max(transaction_dates)
-    time_span_days = (max_date - min_date).days
+    avg_per_month = len(all_transactions) / total_months if total_months > 0 else 0.0
 
-    transactions_per_month = len(all_transactions) / ((time_span_days / 30) + 1e-8)
-    transactions_per_week = len(all_transactions) / ((time_span_days / 7) + 1e-8)
+    # Consistency Check: If most transactions fall within ±2 days of the same date each month, boost the score
+    days_of_month = [date.day for date in transaction_dates]
+    most_common_day = max(set(days_of_month), key=days_of_month.count)
+    consistency = days_of_month.count(most_common_day) / len(days_of_month)
 
-    return {
-        "transactions_per_month": transactions_per_month,
-        "transactions_per_week": transactions_per_week,
-    }
+    return avg_per_month * consistency  # Prioritizes stable patterns
+
+
+def transactions_per_week(all_transactions: list[Transaction]) -> float:
+    """Calculates the average transactions per week with consistency check."""
+    if not all_transactions:
+        return 0.0
+
+    transaction_dates = sorted(parse_date(t.date) for t in all_transactions)
+    total_days = (transaction_dates[-1] - transaction_dates[0]).days
+    total_weeks = total_days / 7 if total_days > 0 else 1
+
+    avg_per_week = len(all_transactions) / total_weeks if total_weeks > 0 else 0.0
+
+    # Consistency Check: If most transactions happen on the same weekday, boost the score
+    weekdays = [date.weekday() for date in transaction_dates]  # 0=Monday, 6=Sunday
+    most_common_weekday = max(set(weekdays), key=weekdays.count)
+    consistency = weekdays.count(most_common_weekday) / len(weekdays)
+
+    return avg_per_week * consistency  # Prioritizes transactions on a stable schedule
 
 
 # 1. Recurrence Interval Variance:
@@ -245,55 +262,26 @@ def trimmed_mean(values: Sequence[float], trim_percent: float = 0.1) -> float:
     return mean(trimmed_values)
 
 
-def get_transaction_intervals(transactions: list[Transaction]) -> dict[str, float]:
-    """
-    Extracts time-based features for recurring transactions.
-    Returns:
-      - avg_days_between_transactions: average days between transactions.
-      - std_dev_days_between_transactions: sample standard deviation of intervals.
-      - monthly_recurrence: ratio of intervals that are within 30±7 days.
-      - same_weekday_ratio: ratio of transactions falling on the most common weekday.
-      - same_amount: ratio of transactions with amounts within ±5% of the first transaction.
-    """
-    if len(transactions) < 2:
-        return {
-            "avg_days_between_transactions": 0.0,
-            "std_dev_days_between_transactions": 0.0,
-            "monthly_recurrence": 0.0,
-            "same_weekday_ratio": 0.0,
-            "same_amount": 0.0,
-        }
-    # Sort transactions by date
-    dates = sorted([t.date for t in transactions])
-    amounts = [t.amount for t in transactions]
+def calculate_cycle_consistency(transactions: list[Transaction]) -> float:
+    """Determines how frequently transactions align with their detected cycle."""
+    if len(transactions) < 3:
+        return 0.0  # Need at least 3 to check consistency
 
-    # Calculate intervals in days
-    intervals = [(parse_date(dates[i]) - parse_date(dates[i - 1])).days for i in range(1, len(dates))]
+    transactions.sort(key=lambda t: parse_date(t.date))  # Ensure transactions are sorted
+    dates = [parse_date(t.date) for t in transactions]
+    intervals = [(dates[i] - dates[i - 1]).days for i in range(1, len(dates))]
 
-    avg_days = mean(intervals)
-    std_dev_days = stdev(intervals) if len(intervals) > 1 else 0.0
+    if not intervals:
+        return 0.0
 
-    # monthly recurrence: intervals that fall in 30 ± 7 days
-    monthly_count = sum(1 for gap in intervals if 23 <= gap <= 37)
-    monthly_recurrence = monthly_count / len(intervals) if intervals else 0.0
+    median_interval = median(intervals)
 
-    # Instead of binary flag, compute ratio of most common weekday
-    weekdays = [parse_date(d).weekday() for d in dates]  # Monday=0 ... Sunday=6
-    weekday_counts = Counter(weekdays)
-    most_common_count = max(weekday_counts.values())
-    same_weekday_ratio = most_common_count / len(weekdays)
+    # Allow for up to 25% variation in the expected cycle interval
+    tolerance = 0.25 * median_interval
 
-    # same_amount: ratio of transactions with amount within ±5% of first transaction's amount
-    base_amount = amounts[0] if amounts[0] != 0 else 1
-    same_amount = sum(1 for amt in amounts if abs(amt - base_amount) / base_amount <= 0.05) / len(amounts)
+    consistent_count = sum(1 for interval in intervals if abs(interval - median_interval) <= tolerance)
 
-    return {
-        "avg_days_between_transactions": float(avg_days),
-        "std_dev_days_between_transactions": float(std_dev_days),
-        "monthly_recurrence": float(monthly_recurrence),
-        "same_weekday_ratio": float(same_weekday_ratio),
-        "same_amount": float(same_amount),
-    }
+    return consistent_count / len(intervals)
 
 
 def safe_interval_consistency(all_transactions: list[Transaction]) -> float:
@@ -341,57 +329,59 @@ def get_vendor_recurrence_score(all_transactions: list[Transaction], total_trans
     return len(all_transactions) / total_transactions  # Proportion of transactions from this vendor
 
 
-def get_enhanced_features(
-    transaction: Transaction, all_transactions: list[Transaction], total_transactions: int
-) -> dict:
-    """Enhanced feature extraction with better temporal patterns and vendor analysis"""
-
-    if not all_transactions:
-        return defaultdict(float)
-
-    # temporal features
-    dates = sorted([t.date for t in all_transactions])
+def enhanced_amt_iqr(all_transactions: list[Transaction]) -> float:
+    """Interquartile range of amounts, scaled to 1-10."""
     amounts = [t.amount for t in all_transactions]
-    intervals = [(parse_date(dates[i]) - parse_date(dates[i - 1])).days for i in range(1, len(dates))]
 
-    # amount consistency
-    amount_stats = {
-        "amt_std": stdev(amounts) if len(amounts) > 1 else 0,
-        "amt_med": median(amounts),
-        "amt_iqr": np.subtract(*np.percentile(amounts, [75, 25])) if amounts else 0,
-    }
+    if not amounts:
+        return 1.0
 
-    # interval patterns
-    interval_stats = {
-        "interval_std": stdev(intervals) if len(intervals) > 1 else 0,
-        "interval_med": median(intervals) if intervals else 0,
-        "interval_consistency": safe_interval_consistency(all_transactions),
-    }
+    iqr = float(np.subtract(*np.percentile(amounts, [75, 25])))  # Convert NumPy float to Python float
 
-    # vendor analysis
-    """Compute a general recurrence score for a vendor instead of binary flags."""
+    return min(10.0, 1.0 + (iqr / max(amounts)) * 9)
 
-    vendor_features = {"proporption": get_vendor_recurrence_score(all_transactions, total_transactions)}
 
-    # Transactions features
-    pattern_features = {
-        "day_of_month": parse_date(transaction.date).day,
-        "days_since_last": get_days_since_last_transaction(
-            transaction, all_transactions
-        ),  # get_days_since_last(transaction, all_transactions)
-        "n_similar_last_90d": len([
-            t for t in all_transactions if (parse_date(transaction.date) - parse_date(t.date)).days <= 90
-        ]),
-    }
+def enhanced_days_since_last(transaction: Transaction, all_transactions: list[Transaction]) -> float:
+    """Dynamically determines recurrence cycles and scores transactions based on how well they fit."""
 
-    return {
-        **amount_stats,
-        **interval_stats,
-        **vendor_features,
-        **pattern_features,
-        "n_transactions": len(all_transactions),
-        "same_amount_ratio": get_same_amount_ratio(transaction, all_transactions),
-    }
+    from statistics import mean
+
+    previous_dates = sorted([
+        parse_date(t.date) for t in all_transactions if t.id != transaction.id and t.name == transaction.name
+    ])
+
+    if not previous_dates:
+        return 1.0  # No previous transactions → lowest score
+
+    # Calculate the average gap between transactions
+    intervals = [(previous_dates[i] - previous_dates[i - 1]).days for i in range(1, len(previous_dates))]
+
+    if not intervals:
+        return 1.0  # Only one previous transaction → lowest score
+
+    avg_interval = mean(intervals)  # Average time gap between transactions
+    days_since = (parse_date(transaction.date) - previous_dates[-1]).days
+
+    # Score based on how closely it matches the expected recurrence interval
+    similarity_score = max(1.0, 10.0 - (abs(days_since - avg_interval) / avg_interval) * 9)
+
+    return round(similarity_score, 2)  # Round for stability
+
+
+def enhanced_n_similar_last_n_days(
+    transaction: Transaction, all_transactions: list[Transaction], days: int = 90
+) -> float:
+    """Counts similar transactions within a given time window, scaled from 1 to 10."""
+
+    similar_transactions = [
+        t
+        for t in all_transactions
+        if abs(parse_date(t.date) - parse_date(transaction.date)).days <= days
+        and abs(t.amount - transaction.amount) / transaction.amount <= 0.051  # Slightly increased tolerance
+    ]
+
+    count = len(similar_transactions)
+    return min(10.0, count)  # Cap at 10
 
 
 # Define common subscription cycles (allowing ±3 days flexibility)
@@ -406,72 +396,104 @@ def detect_common_interval(intervals: list[int]) -> bool:
     return any(any(abs(interval - cycle) <= CYCLE_RANGE for interval in intervals) for cycle in COMMON_CYCLES)
 
 
-def get_transaction_stability_features(transactions: list[Transaction]) -> dict[str, float]:
+def transaction_frequency(transactions: list[Transaction]) -> float:
+    """Returns transaction frequency per month."""
     if len(transactions) < 2:
-        return {
-            "transaction_frequency": 0.0,
-            "robust_interval_median": 0.0,
-            "robust_interval_iqr": 0.0,
-            "coefficient_of_variation_intervals": 0.0,
-            "amount_variability_ratio": 0.0,
-            "matches_common_cycle": 0.0,
-            "recurring_confidence": 0.0,
-        }
+        return 0.0
 
-    # Sort transactions by date
-    dates = sorted([t.date for t in transactions])
-    amounts = [t.amount for t in transactions]
-    company_names = [t.name for t in transactions]
-
-    # Compute intervals (in days) between consecutive transactions
-    intervals = [(parse_date(dates[i]) - parse_date(dates[i - 1])).days for i in range(1, len(dates))]
-    intervals = sorted(intervals)
-
-    # Compute robust median interval (using sorted intervals)
-    robust_interval_median: float = float(median(intervals))
-    if len(intervals) > 1:
-        iqr_intervals: float = float(
-            np.percentile(intervals, 75, method="midpoint") - np.percentile(intervals, 25, method="midpoint")
-        )
-    else:
-        iqr_intervals = 0.0
-    coefficient_of_variation_intervals: float = (
-        iqr_intervals / robust_interval_median if robust_interval_median > 0 else 0.0
-    )
-
-    # Transaction frequency: number of transactions per month
-    total_days = (parse_date(dates[-1]) - parse_date(dates[0])).days
+    dates = sorted([parse_date(t.date) for t in transactions])
+    total_days = (dates[-1] - dates[0]).days
     months = max(total_days / 30, 1)
-    transaction_frequency: float = float(len(transactions) / months)
+    return float(len(transactions) / months)
 
-    # Compute amount variability using robust measures
-    robust_amount_median: float = float(median(amounts))
+
+def robust_interval_median(transactions: list[Transaction]) -> float:
+    """Returns the median interval between transactions."""
+    if len(transactions) < 2:
+        return 0.0
+
+    dates = sorted([parse_date(t.date) for t in transactions])
+    intervals = [(dates[i] - dates[i - 1]).days for i in range(1, len(dates))]
+    return float(median(intervals)) if intervals else 0.0
+
+
+def robust_interval_iqr(transactions: list[Transaction]) -> float:
+    """Returns the interquartile range (IQR) of transaction intervals."""
+    if len(transactions) < 2:
+        return 0.0
+
+    dates = sorted([parse_date(t.date) for t in transactions])
+    intervals = sorted([(dates[i] - dates[i - 1]).days for i in range(1, len(dates))])
+
+    if len(intervals) > 1:
+        return float(np.percentile(intervals, 75, method="midpoint") - np.percentile(intervals, 25, method="midpoint"))
+    return 0.0
+
+
+def amount_variability_ratio(transactions: list[Transaction]) -> float:
+    """Returns the variability ratio of transaction amounts."""
+    if len(transactions) < 2:
+        return 0.0
+
+    amounts = [t.amount for t in transactions]
+    median_amount = median(amounts)
+
     if len(amounts) > 1:
-        iqr_amounts: float = float(
+        iqr_amounts = float(
             np.percentile(amounts, 75, method="midpoint") - np.percentile(amounts, 25, method="midpoint")
         )
-    else:
-        iqr_amounts = 0.0
-    amount_variability_ratio: float = iqr_amounts / robust_amount_median if robust_amount_median > 0 else 0.0
+        return iqr_amounts / median_amount if median_amount > 0 else 0.0
+    return 0.0
 
-    # Check if the transaction follows a common cycle
-    matches_common_cycle = 1.0 if detect_common_interval(intervals) else 0.0
 
-    # Compute recurring confidence by checking company name detection
-    recurring_confidence = 0.0
+def most_common_interval(transactions: list[Transaction]) -> float:
+    """Returns the most common interval between transactions."""
+    if len(transactions) < 2:
+        return 0.0
+
+    dates = sorted([parse_date(t.date) for t in transactions])
+    intervals = [(dates[i] - dates[i - 1]).days for i in range(1, len(dates))]
+
+    if intervals:
+        counter = Counter(intervals)
+        return float(counter.most_common(1)[0][0])  # Get the most frequent interval
+    return 0.0
+
+
+def matches_common_cycle(transactions: list[Transaction]) -> float:
+    """Returns 1 if transactions match a common cycle, otherwise 0."""
+    if len(transactions) < 2:
+        return 0.0
+
+    dates = sorted([parse_date(t.date) for t in transactions])
+    intervals = [(dates[i] - dates[i - 1]).days for i in range(1, len(dates))]
+
+    return 1.0 if detect_common_interval(intervals) else 0.0
+
+
+def recurring_confidence(transactions: list[Transaction]) -> float:
+    """Returns confidence score (0-1) for transactions being recurring."""
+    if not transactions:
+        return 0.0
+
+    company_names = [t.name for t in transactions]
+    confidence = 0.0
+
     for name in company_names:
-        company_features = detect_recurring_company(name)
-        recurring_confidence = max(recurring_confidence, company_features["recurring_score"])
+        utility_score = is_utility_company(name)
+        recurrence_score = recurring_score(name)
 
-    return {
-        "transaction_frequency": float(transaction_frequency),
-        "robust_interval_median": float(robust_interval_median),
-        "robust_interval_iqr": float(iqr_intervals),
-        "coefficient_of_variation_intervals": float(coefficient_of_variation_intervals),
-        "amount_variability_ratio": float(amount_variability_ratio),
-        "matches_common_cycle": float(matches_common_cycle),
-        "recurring_confidence": float(recurring_confidence),
-    }
+        confidence = max(confidence, recurrence_score, utility_score)
+
+    return float(confidence)
+
+
+def coefficient_of_variation_intervals(transactions: list[Transaction]) -> float:
+    """Returns the coefficient of variation of transaction intervals."""
+    median_interval = robust_interval_median(transactions)
+    iqr = robust_interval_iqr(transactions)
+
+    return iqr / median_interval if median_interval > 0 else 0.0
 
 
 # Predefined lists of known recurring companies and keywords
@@ -551,83 +573,96 @@ def clean_company_name(name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9\s]", "", name).strip().lower()
 
 
-def detect_recurring_company(company_name: str) -> dict[str, float]:
+# def detect_recurring_company(company_name: str) -> dict[str, float]:
+#     """
+#     Detects if a company is likely to offer recurring payments (e.g., subscriptions, utilities).
+#      Returns a dictionary of features:
+#     - is_recurring_company: 1 if the company is known to offer recurring payments, else 0
+#     - is_utility_company: 1 if the company is a utility provider, else 0
+#     - recurring_score: Confidence score (0 to 1) based on keyword matches
+#     """
+#     cleaned_name = clean_company_name(company_name)
+
+#     # Check if the company is a known recurring company
+#     is_recurring_company = 1 if RECURRING_PATTERN.search(cleaned_name) else 0
+
+#     # Check if the company is a utility provider
+#     is_utility_company = 1 if UTILITY_PATTERN.search(cleaned_name) else 0
+
+#     # Calculate a recurring score based on keyword matches
+#     recurring_score = 0.0
+#     if is_recurring_company:
+#         recurring_score = 1.0
+#     elif is_utility_company:
+#         recurring_score = 0.8  # Utilities are highly likely to be recurring
+#     else:
+#         # Check for partial matches (e.g., "Netflix Inc.")
+#         for keyword in KNOWN_RECURRING_COMPANIES:
+#             if keyword in cleaned_name:
+#                 recurring_score = max(recurring_score, 0.7)  # Partial match confidence
+
+#     return {
+#         "is_recurring_company": is_recurring_company,
+#         "is_utility_company": is_utility_company,
+#         "recurring_score": recurring_score,
+#     }
+
+
+def is_utility_company(company_name: str) -> int:
+    """Returns 1 if the company is a utility provider, else 0."""
+    cleaned_name = clean_company_name(company_name)
+    return 1 if UTILITY_PATTERN.search(cleaned_name) else 0
+
+
+def is_recurring_company(company_name: str) -> int:
+    """Returns 1 if the company is known for recurring payments, else 0."""
+    cleaned_name = clean_company_name(company_name)
+    return 1 if RECURRING_PATTERN.search(cleaned_name) else 0
+
+
+def recurring_score(company_name: str) -> float:
     """
-    Detects if a company is likely to offer recurring payments (e.g., subscriptions, utilities).
-     Returns a dictionary of features:
-    - is_recurring_company: 1 if the company is known to offer recurring payments, else 0
-    - is_utility_company: 1 if the company is a utility provider, else 0
-    - recurring_score: Confidence score (0 to 1) based on keyword matches
+    Returns a confidence score (0 to 1) based on keyword matches indicating
+    whether a company is likely offering recurring payments.
     """
     cleaned_name = clean_company_name(company_name)
 
-    # Check if the company is a known recurring company
-    is_recurring_company = 1 if RECURRING_PATTERN.search(cleaned_name) else 0
+    if RECURRING_PATTERN.search(cleaned_name):
+        return 1.0
+    if UTILITY_PATTERN.search(cleaned_name):
+        return 0.8  # Utilities are highly likely to be recurring
 
-    # Check if the company is a utility provider
-    is_utility_company = 1 if UTILITY_PATTERN.search(cleaned_name) else 0
+    # Check for partial matches with known recurring companies
+    for keyword in KNOWN_RECURRING_COMPANIES:
+        if keyword in cleaned_name:
+            return 0.7  # Partial match confidence
 
-    # Calculate a recurring score based on keyword matches
-    recurring_score = 0.0
-    if is_recurring_company:
-        recurring_score = 1.0
-    elif is_utility_company:
-        recurring_score = 0.8  # Utilities are highly likely to be recurring
-    else:
-        # Check for partial matches (e.g., "Netflix Inc.")
-        for keyword in KNOWN_RECURRING_COMPANIES:
-            if keyword in cleaned_name:
-                recurring_score = max(recurring_score, 0.7)  # Partial match confidence
-
-    return {
-        "is_recurring_company": is_recurring_company,
-        "is_utility_company": is_utility_company,
-        "recurring_score": recurring_score,
-    }
+    return 0.0
 
 
-def detect_subscription_pattern(all_transactions: list[Transaction]) -> dict[str, float]:
-    """
-    Detects subscription-like payment patterns based on:
-    - Regular intervals (e.g., monthly)
-    - Similar amounts (allowing for small variations)
-    - Flexible timing (within a one-week range)
-
-    Returns a dictionary of features:
-    - subscription_score: Likelihood of being a subscription (0 to 1)
-    - interval_consistency: How consistent the intervals are (0 to 1)
-    - amount_consistency: How consistent the amounts are (0 to 1)
-    """
+def get_subscription_score(all_transactions: list[Transaction]) -> float:
+    """Improved subscription detection with vendor similarity and gradual amount changes."""
     if len(all_transactions) < 2:
-        return {
-            "subscription_score": 0.0,
-            "interval_consistency": 0.0,
-            "amount_consistency": 0.0,
-            "detected_cycle": 0.0,
-        }
+        return 0.0
 
     # Sort transactions by date
-    all_transactions.sort(key=lambda t: t.date)
+    all_transactions.sort(key=lambda t: parse_date(t.date))
     dates = [t.date for t in all_transactions]
     amounts = [t.amount for t in all_transactions]
+    vendors = [t.name for t in all_transactions]  # Vendor names
 
-    # Compute intervals between transactions (in days)
+    # Compute intervals (days)
     intervals = [(parse_date(dates[i]) - parse_date(dates[i - 1])).days for i in range(1, len(dates))]
     if not intervals:
-        return {
-            "subscription_score": 0.0,
-            "interval_consistency": 0.0,
-            "amount_consistency": 0.0,
-            "detected_cycle": 0.0,
-        }
+        return 0.0
 
-    median_interval: float = float(median(intervals))
+    median_interval = float(median(intervals))
 
-    # Define flexible subscription cycles with ±3-day tolerance
-    base_cycles = [7, 14, 30, 90, 365]  # Weekly, biweekly, monthly, quarterly, yearly
+    # Subscription cycles with ±3-day tolerance
+    base_cycles = [7, 14, 30, 90, 365]
     cycle_ranges = {cycle: (cycle - 3, cycle + 3) for cycle in base_cycles}
 
-    # Find the closest matching cycle based on range
+    # Find the closest cycle
     detected_cycle = min(
         base_cycles,
         key=lambda c: abs(median_interval - c)
@@ -635,107 +670,110 @@ def detect_subscription_pattern(all_transactions: list[Transaction]) -> dict[str
         else float("inf"),
     )
 
-    # Adaptive threshold: Allow ±15% variation in interval
-    interval_deviation_threshold = 0.15 * detected_cycle
+    # Interval consistency (adaptive threshold)
+    interval_threshold = 0.15 * detected_cycle
     interval_consistency = sum(
-        1 for interval in intervals if abs(interval - median_interval) <= interval_deviation_threshold
+        1 for interval in intervals if abs(interval - median_interval) <= interval_threshold
     ) / len(intervals)
 
-    # Adaptive amount consistency: Allow up to ±15% variation
+    # Amount consistency (adaptive threshold with rolling deviation)
     median_amount = median(amounts)
-    amount_deviation_threshold = 0.15 * median_amount
-    amount_consistency = sum(
-        1 for amount in amounts if abs(amount - median_amount) <= amount_deviation_threshold
-    ) / len(amounts)
+    std_dev = float(np.std(amounts))  # ✅ Convert np.float64 to Python float
+    threshold = max(0.15 * median_amount, std_dev * 0.5)
+    amount_consistency = sum(1 for amount in amounts if abs(amount - median_amount) <= threshold) / len(amounts)
 
-    # Combine into a final subscription score
-    subscription_score = (interval_consistency + amount_consistency) / 2
+    # Vendor similarity (if same vendor is used consistently)
+    unique_vendors = len(set(vendors))
+    vendor_consistency = 1.0 if unique_vendors == 1 else max(0.2, 1.0 - (unique_vendors / len(vendors)))
 
-    return {
-        "subscription_score": subscription_score,
-        "interval_consistency": interval_consistency,
-        "amount_consistency": amount_consistency,
-        "detected_cycle": float(detected_cycle) if detected_cycle != float("inf") else 0.0,  # Avoid invalid cycle
-    }
+    # Final subscription score (weighted combination)
+    subscription_score = (interval_consistency * 0.4) + (amount_consistency * 0.4) + (vendor_consistency * 0.2)
+
+    return min(1.0, subscription_score)  # Ensure score is between 0 and 1
 
 
-def detect_non_recurring_pattern(all_transactions: list[Transaction]) -> dict[str, float]:
-    """
-    Detects patterns typical of non-recurring transactions based on:
-    - Irregular intervals between transactions.
-    - Inconsistent payment amounts.
+def get_amount_consistency(all_transactions: list[Transaction]) -> float:
+    """Detects how consistent transaction amounts are over time."""
+    amounts = [t.amount for t in all_transactions]
+    if len(amounts) < 2:
+        return 0.0
 
-    Returns a dictionary of features:
-    - is_non_recurring: 1 if the transaction is likely non-recurring, else 0.
-    - irregular_interval_score: Score indicating irregularity in transaction intervals (0 to 1).
-    - inconsistent_amount_score: Score indicating inconsistency in payment amounts (0 to 1).
-    - non_recurring_score: Combined score indicating likelihood of being non-recurring (0 to 1).
-    """
+    median_amount = median(amounts)
+    std_dev = float(np.std(amounts))  # Explicit conversion
+    threshold = max(0.15 * median_amount, std_dev * 0.5)
+
+    amount_consistency = sum(1 for amount in amounts if abs(amount - median_amount) <= threshold) / len(amounts)
+
+    return min(1.0, amount_consistency)
+
+
+def irregular_interval_score(all_transactions: list[Transaction]) -> float:
+    """Computes how irregular the intervals between transactions are (0 to 1)."""
     if not all_transactions or len(all_transactions) < 2:
-        return {
-            "irregular_interval_score": 0.0,
-            "inconsistent_amount_score": 0.0,
-            "non_recurring_score": 0.0,
-        }
+        return 0.0
 
-    # Sort transactions by date
     sorted_transactions = sorted(all_transactions, key=lambda t: t.date)
-    dates = [t.date for t in sorted_transactions]
-    amounts = [t.amount for t in sorted_transactions]
+    dates = [parse_date(t.date) for t in sorted_transactions]
+    intervals = [(dates[i] - dates[i - 1]).days for i in range(1, len(dates))]
 
-    # Calculate intervals between transactions (in days)
-    intervals = [(parse_date(dates[i]) - parse_date(dates[i - 1])).days for i in range(1, len(dates))]
-
-    # Calculate irregularity in intervals
-    interval_std = stdev(intervals) if len(intervals) > 1 else 0.0
-    median_interval = median(intervals) if intervals else 0.0
-    irregular_interval_score = min(interval_std / (median_interval + 1e-8), 1.0)  # Normalize to [0, 1]
-
-    # Calculate inconsistency in amounts
-    amount_std = stdev(amounts) if len(amounts) > 1 else 0.0
-    median_amount = median(amounts) if amounts else 0.0
-    inconsistent_amount_score = min(amount_std / (median_amount + 1e-8), 1.0)  # Normalize to [0, 1]
-
-    # Combine scores into a non-recurring score
-    non_recurring_score = (irregular_interval_score + inconsistent_amount_score) / 2
-
-    # Threshold to classify as non-recurring
-
-    return {
-        "irregular_interval_score": irregular_interval_score,
-        "inconsistent_amount_score": inconsistent_amount_score,
-        "non_recurring_score": non_recurring_score,
-    }
+    if len(intervals) > 1:
+        interval_std = stdev(intervals)
+        mean_interval = sum(intervals) / len(intervals)
+        return min(interval_std / (mean_interval + 1e-8), 1.0)
+    return 0.0
 
 
-def one_time_features(all_transactions: list[Transaction]) -> dict:
-    """Identifies patterns typical of one-time purchases with safe calculations"""
-    # Convert to list first to handle empty cases
+def inconsistent_amount_score(all_transactions: list[Transaction]) -> float:
+    """Computes how inconsistent the transaction amounts are (0 to 1)."""
+    if not all_transactions or len(all_transactions) < 2:
+        return 0.0
+
+    amounts = [t.amount for t in all_transactions]
+
+    if len(amounts) > 1:
+        amount_std = stdev(amounts)
+        mean_amount = sum(amounts) / len(amounts)
+        return min(amount_std / (mean_amount + 1e-8), 1.0)
+    return 0.0
+
+
+def non_recurring_score(all_transactions: list[Transaction]) -> float:
+    """
+    Determines the probability of transactions being non-recurring (0 to 1).
+    """
+    interval_score = irregular_interval_score(all_transactions)
+    amount_score = inconsistent_amount_score(all_transactions)
+
+    if interval_score > 0.7 and amount_score > 0.7:
+        return 1.0  # Highly non-recurring
+    elif interval_score > 0.4 or amount_score > 0.4:
+        return 0.7  # Moderately non-recurring
+    return 0.0  # Recurring
+
+
+def amount_variability_score(all_transactions: list[Transaction]) -> float:
+    """Scores how much transaction amounts vary (1-10)."""
+    if len(all_transactions) < 2:
+        return 1.0  # Single transactions are inherently non-recurring
+
+    unique_amounts = len({t.amount for t in all_transactions})
+    ratio = unique_amounts / len(all_transactions)
+
+    return min(10.0, ratio * 10)  # Scale to 1-10
+
+
+def date_irregularity_score(all_transactions: list[Transaction]) -> float:
+    """Scores how irregular the transaction dates are (1-10)."""
+    if len(all_transactions) < 2:
+        return 1.0  # Single transactions = non-recurring
+
     months = [parse_date(t.date).month for t in all_transactions]
-
-    # Safe standard deviation calculation
     try:
         date_std = stdev(months) if len(months) >= 2 else 0
     except StatisticsError:
         date_std = 0
 
-    return {
-        "varying_amounts": 1 if len({t.amount for t in all_transactions}) / len(all_transactions) > 0.7 else 0,
-        "irregular_dates": 1 if date_std > 1.5 else 0,
-    }
-
-
-def merchant_category_features(name: str) -> dict:
-    """Identifies merchants unlikely to have recurring payments"""
-    cleaned = name.lower()
-    return {
-        "is_retail": 1
-        if any(kw in cleaned for kw in {"amazon", "walmart", "store", "shop", "motorsports", "gallery"})
-        else 0,
-        "is_entertainment": 1
-        if any(kw in cleaned for kw in {"movie", "theatre", "bet", "nfl", "roku", "starz"})
-        else 0,
-    }
+    return min(10.0, (date_std / 2) * 10)  # Scale to 1-10, assuming >2 std dev is max irregularity
 
 
 # Helper: Calculate days between dates in a transaction list

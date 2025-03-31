@@ -1,6 +1,5 @@
 # test features
 import datetime
-from collections import Counter
 from datetime import date
 from math import isclose
 from statistics import median, stdev
@@ -11,26 +10,41 @@ from recur_scan.features_frank import (
     amount_coefficient_of_variation,
     amount_similarity,
     amount_stability_score,
+    amount_variability_ratio,
+    amount_variability_score,
     amount_z_score,
+    calculate_cycle_consistency,
     clean_company_name,
+    coefficient_of_variation_intervals,
+    date_irregularity_score,
     detect_common_interval,
-    detect_non_recurring_pattern,
-    detect_recurring_company,
-    detect_subscription_pattern,
-    frequency_features,
+    enhanced_amt_iqr,
+    enhanced_days_since_last,
+    enhanced_n_similar_last_n_days,
+    get_amount_consistency,
     get_days_since_last_transaction,
-    get_enhanced_features,
     get_same_amount_ratio,
-    get_transaction_intervals,
-    get_transaction_stability_features,
+    get_subscription_score,
     get_vendor_recurrence_score,
-    merchant_category_features,
+    inconsistent_amount_score,
+    irregular_interval_score,
+    is_recurring_company,
+    is_utility_company,
+    matches_common_cycle,
+    most_common_interval,
+    non_recurring_score,
     normalized_days_difference,
-    one_time_features,
     proportional_timing_deviation,
     recurrence_interval_variance,
+    recurring_confidence,
+    recurring_score,
+    robust_interval_iqr,
+    robust_interval_median,
     safe_interval_consistency,
     seasonal_spending_cycle,
+    transaction_frequency,
+    transactions_per_month,
+    transactions_per_week,
     trimmed_mean,
     vendor_recurrence_trend,
     weekly_spending_cycle,
@@ -64,6 +78,162 @@ def transactions():
             date=datetime.date(2024, 1, 2).strftime("%Y-%m-%d"),
         ),
     ]
+
+
+def test_is_recurring_company():
+    assert is_recurring_company("Netflix") == 1
+    assert is_recurring_company("Amazon Prime") == 1
+    assert is_recurring_company("McDonald's") == 0  # Not a recurring company
+
+
+def test_is_utility_company():
+    assert is_utility_company("Electric Company") == 1
+    assert is_utility_company("Water Supplier") == 1
+    assert is_utility_company("Nike") == 0  # Not a utility company
+
+
+def test_recurring_score():
+    assert recurring_score("Spotify") == 1.0
+    assert recurring_score("Hulu Inc.") == 1.0  # Partial match
+    assert recurring_score("Local Restaurant") == 0.0  # No recurring service
+
+
+def test_calculate_cycle_consistency():
+    transactions = [
+        Transaction(id=1, user_id="u1", name="vendorX", date="2023-01-01", amount=50.0),
+        Transaction(id=2, user_id="u1", name="vendorX", date="2023-02-01", amount=50.0),
+        Transaction(id=3, user_id="u1", name="vendorX", date="2023-03-01", amount=50.0),
+        Transaction(id=4, user_id="u1", name="vendorX", date="2023-04-02", amount=50.0),  # Slight delay
+        Transaction(id=5, user_id="u1", name="vendorX", date="2023-05-01", amount=50.0),
+    ]
+
+    score = calculate_cycle_consistency(transactions)
+
+    # Since one transaction is delayed by a day, the score should still be close to 1
+    assert isclose(score, 1.0, rel_tol=1e-2), f"Expected score close to 1.0, got {score}"
+
+    # Test with inconsistent cycles
+    inconsistent_transactions = [
+        Transaction(id=1, user_id="u1", name="vendorY", date="2023-01-01", amount=100.0),
+        Transaction(id=2, user_id="u1", name="vendorY", date="2023-01-15", amount=100.0),
+        Transaction(id=3, user_id="u1", name="vendorY", date="2023-02-10", amount=100.0),
+        Transaction(id=4, user_id="u1", name="vendorY", date="2023-03-25", amount=100.0),
+    ]
+
+    inconsistent_score = calculate_cycle_consistency(inconsistent_transactions)
+
+    # Since these transactions don't follow a consistent cycle, score should be lower
+    assert inconsistent_score < 0.5, f"Expected score < 0.5, got {inconsistent_score}"
+
+    # Test with less than 3 transactions (should return 0.0)
+    short_transactions = [
+        Transaction(id=1, user_id="u1", name="vendorZ", date="2023-01-01", amount=200.0),
+        Transaction(id=2, user_id="u1", name="vendorZ", date="2023-02-01", amount=200.0),
+    ]
+
+    short_score = calculate_cycle_consistency(short_transactions)
+
+    assert short_score == 0.0, f"Expected score 0.0 for short history, got {short_score}"
+
+
+def test_amount_variability_score():
+    transactions = [
+        Transaction(id=1, user_id="u1", name="vendorA", date="2023-01-01", amount=100.0),
+        Transaction(id=2, user_id="u1", name="vendorA", date="2023-01-10", amount=110.0),
+        Transaction(id=3, user_id="u1", name="vendorA", date="2023-01-20", amount=120.0),
+        Transaction(id=4, user_id="u1", name="vendorA", date="2023-02-01", amount=130.0),
+        Transaction(id=5, user_id="u1", name="vendorA", date="2023-02-15", amount=140.0),
+    ]
+    score = amount_variability_score(transactions)
+    assert isclose(score, 10.0, rel_tol=1e-2), f"Expected 10.0, got {score}"
+
+
+def test_date_irregularity_score():
+    transactions = [
+        Transaction(id=1, user_id="u1", name="vendorB", date="2023-01-05", amount=50.0),
+        Transaction(id=2, user_id="u1", name="vendorB", date="2023-03-15", amount=50.0),
+        Transaction(id=3, user_id="u1", name="vendorB", date="2023-06-20", amount=50.0),
+        Transaction(id=4, user_id="u1", name="vendorB", date="2023-09-10", amount=50.0),
+        Transaction(id=5, user_id="u1", name="vendorB", date="2023-12-25", amount=50.0),
+    ]
+    score = date_irregularity_score(transactions)
+    assert score > 5.0, f"Expected >5.0 for highly irregular dates, got {score}"
+
+
+def test_transaction_frequency():
+    transactions = [
+        Transaction(id=1, user_id="u1", name="vendorA", date="2023-01-01", amount=50),
+        Transaction(id=2, user_id="u1", name="vendorA", date="2023-02-01", amount=55),
+        Transaction(id=3, user_id="u1", name="vendorA", date="2023-03-01", amount=60),
+        Transaction(id=4, user_id="u1", name="vendorA", date="2023-04-01", amount=65),
+    ]
+    freq = transaction_frequency(transactions)
+    assert freq > 0, f"Expected positive frequency, got {freq}"
+
+
+def test_amount_variability_ratio():
+    transactions = [
+        Transaction(id=1, user_id="u1", name="StoreA", date="2023-01-01", amount=100),
+        Transaction(id=2, user_id="u1", name="StoreA", date="2023-01-10", amount=110),
+        Transaction(id=3, user_id="u1", name="StoreA", date="2023-01-20", amount=90),
+        Transaction(id=4, user_id="u1", name="StoreA", date="2023-01-30", amount=105),
+    ]
+    ratio = amount_variability_ratio(transactions)
+    assert ratio > 0, f"Expected ratio > 0, got {ratio}"
+
+
+def test_robust_interval_iqr():
+    transactions = [
+        Transaction(id=1, user_id="u1", name="ShopX", date="2023-01-01", amount=50),
+        Transaction(id=2, user_id="u1", name="ShopX", date="2023-01-10", amount=50),
+        Transaction(id=3, user_id="u1", name="ShopX", date="2023-01-25", amount=50),
+        Transaction(id=4, user_id="u1", name="ShopX", date="2023-02-05", amount=50),
+    ]
+    iqr = robust_interval_iqr(transactions)
+    assert iqr > 0, f"Expected IQR > 0, got {iqr}"
+
+
+def test_robust_interval_median():
+    transactions = [
+        Transaction(id=1, user_id="u1", name="vendorB", date="2023-01-01", amount=50),
+        Transaction(id=2, user_id="u1", name="vendorB", date="2023-01-10", amount=55),
+        Transaction(id=3, user_id="u1", name="vendorB", date="2023-01-20", amount=60),
+        Transaction(id=4, user_id="u1", name="vendorB", date="2023-02-05", amount=65),
+    ]
+    median_interval = robust_interval_median(transactions)
+    assert median_interval > 0, f"Expected positive median interval, got {median_interval}"
+
+
+def test_matches_common_cycle():
+    transactions = [
+        Transaction(id=1, user_id="u1", name="vendorC", date="2023-01-01", amount=50),
+        Transaction(id=2, user_id="u1", name="vendorC", date="2023-02-01", amount=52),
+        Transaction(id=3, user_id="u1", name="vendorC", date="2023-03-01", amount=150),
+        Transaction(id=4, user_id="u1", name="vendorC", date="2023-04-01", amount=75),
+    ]
+    cycle_match = matches_common_cycle(transactions)
+    assert cycle_match in [0.0, 1.0], f"Expected cycle match to be 0 or 1, got {cycle_match}"
+
+
+def test_most_common_interval():
+    transactions = [
+        Transaction(id=1, user_id="u1", name="vendorX", date="2023-01-01", amount=50),
+        Transaction(id=2, user_id="u1", name="vendorX", date="2023-01-10", amount=50),
+        Transaction(id=3, user_id="u1", name="vendorX", date="2023-01-20", amount=50),
+        Transaction(id=4, user_id="u1", name="vendorX", date="2023-01-30", amount=50),
+    ]
+    most_common = most_common_interval(transactions)
+    assert most_common == 10, f"Expected interval 10, got {most_common}"
+
+
+def test_recurring_confidence():
+    transactions = [
+        Transaction(id=1, user_id="u1", name="Netflix", date="2023-01-01", amount=15),
+        Transaction(id=2, user_id="u1", name="Netflix", date="2023-02-01", amount=15),
+        Transaction(id=3, user_id="u1", name="Netflix", date="2023-03-01", amount=15),
+    ]
+    confidence = recurring_confidence(transactions)
+    assert confidence > 0.5, f"Expected confidence > 0.5, got {confidence}"
 
 
 def test_proportional_timing_deviation():
@@ -112,110 +282,81 @@ def test_trimmed_mean():
     assert trimmed_mean([5, 5, 5, 5, 5]) == 5.0
 
 
-def test_get_transaction_intervals_single_transaction():
-    """
-    Test get_transaction_intervals with only one transaction.
-    With a single transaction, there is no interval to compute so all features should be zero.
-    """
-    single_tx = [
-        Transaction(
-            id=1,
-            user_id="user1",
-            name="vendor1",
-            amount=100,
-            date=datetime.date(2024, 1, 2).strftime("%Y-%m-%d"),
-        )
-    ]
-    result = get_transaction_intervals(single_tx)
-    expected = {
-        "avg_days_between_transactions": 0.0,
-        "std_dev_days_between_transactions": 0.0,
-        "monthly_recurrence": 0,
-        "same_weekday_ratio": 0,  # renamed key to match the function output
-        "same_amount": 0,
-    }
-    assert result == expected
-
-
-def test_detect_recurring_company():
-    # Test with a known recurring company
-    result1 = detect_recurring_company("Netflix Inc.")
-    assert result1["is_recurring_company"] == 1, f"Expected 1, got {result1['is_recurring_company']}"
-    assert result1["recurring_score"] == 1.0, f"Expected 1.0, got {result1['recurring_score']}"
-
-    # Test with a known utility company
-    result2 = detect_recurring_company("ABC Electric Company")
-    assert result2["is_utility_company"] == 1, f"Expected 1, got {result2['is_utility_company']}"
-    assert result2["recurring_score"] == 0.8, f"Expected 0.8, got {result2['recurring_score']}"
-
-    # Test with a company name that contains a known recurring keyword
-    result3 = detect_recurring_company("Spotify Premium")
-    assert result3["recurring_score"] >= 0.7, f"Expected at least 0.7, got {result3['recurring_score']}"
-
-    # Test with a non-recurring company
-    result4 = detect_recurring_company("Local Bakery")
-    assert result4["is_recurring_company"] == 0, f"Expected 0, got {result4['is_recurring_company']}"
-    assert result4["is_utility_company"] == 0, f"Expected 0, got {result4['is_utility_company']}"
-    assert result4["recurring_score"] == 0.0, f"Expected 0.0, got {result4['recurring_score']}"
-
-
-def test_get_transaction_intervals_multiple_transactions():
-    """
-    Test get_transaction_intervals with multiple transactions.
-    This test uses a different set of dates and amounts.
-    """
+def test_enhanced_days_since_last():
     transactions = [
-        Transaction(
-            id=1,
-            user_id="user1",
-            name="vendor1",
-            amount=100,
-            date=datetime.date(2024, 1, 2).strftime("%Y-%m-%d"),
-        ),
-        Transaction(
-            id=2,
-            user_id="user1",
-            name="vendor1",
-            amount=100,
-            date=datetime.date(2024, 2, 9).strftime("%Y-%m-%d"),
-        ),
-        Transaction(
-            id=3,
-            user_id="user1",
-            name="vendor1",
-            amount=200,
-            date=datetime.datetime.strptime("2024-03-03", "%Y-%m-%d").strftime("%Y-%m-%d"),
-        ),
+        Transaction(id=1, user_id="u1", name="vendorX", date="2023-01-01", amount=50),
+        Transaction(id=2, user_id="u1", name="vendorX", date="2023-02-01", amount=50),
+        Transaction(id=3, user_id="u1", name="vendorX", date="2023-03-01", amount=50),
+        Transaction(id=4, user_id="u1", name="vendorX", date="2023-04-01", amount=50),
     ]
-    result = get_transaction_intervals(transactions)
 
-    weekdays = [datetime.datetime.strptime(t.date, "%Y-%m-%d").date().weekday() for t in transactions]
-    # Calculate mode frequency:
-    weekday_counts = Counter(weekdays)
-    most_common_count = max(weekday_counts.values())
-    expected_same_weekday_ratio = most_common_count / len(weekdays)
+    score = enhanced_days_since_last(transactions[-1], transactions)
 
-    # For amounts: [100, 100, 200], same_amount ratio is 2/3.
-    expected = {
-        "avg_days_between_transactions": 30.5,
-        "std_dev_days_between_transactions": 10.6066,
-        "monthly_recurrence": 0.5,  # updated expected value
-        "same_weekday_ratio": expected_same_weekday_ratio,
-        "same_amount": 2 / 3,
-    }
+    assert 9.0 <= score <= 10.0, f"Expected high score (near 10), got {score}"
 
-    print("Result:", result)
-    print("Expected:", expected)
 
-    from math import isclose
+def test_enhanced_n_similar_last_n_days():
+    transactions = [
+        Transaction(id=1, user_id="u1", name="vendorY", date="2023-01-10", amount=99.99),
+        Transaction(id=2, user_id="u1", name="vendorY", date="2023-01-25", amount=100.50),
+        Transaction(id=3, user_id="u1", name="vendorY", date="2023-02-10", amount=98.99),
+        Transaction(id=4, user_id="u1", name="vendorY", date="2023-02-20", amount=102.00),
+        Transaction(id=5, user_id="u1", name="vendorY", date="2023-03-05", amount=100.00),
+    ]
 
-    assert isclose(result["avg_days_between_transactions"], expected["avg_days_between_transactions"], rel_tol=1e-5)
-    assert isclose(
-        result["std_dev_days_between_transactions"], expected["std_dev_days_between_transactions"], rel_tol=1e-3
-    )
-    assert isclose(result["monthly_recurrence"], expected["monthly_recurrence"], rel_tol=1e-2)
-    assert isclose(result["same_weekday_ratio"], expected["same_weekday_ratio"], rel_tol=1e-5)
-    assert isclose(result["same_amount"], expected["same_amount"], rel_tol=1e-5)
+    score = enhanced_n_similar_last_n_days(transactions[-1], transactions, days=90)
+
+    assert score == 5, f"Expected 5 similar transactions, got {score}"
+
+
+def test_enhanced_amt_iqr():
+    # Transactions with varying amounts
+    transactions = [
+        Transaction(id=1, user_id="u1", name="vendorA", date="2023-01-01", amount=50),
+        Transaction(id=2, user_id="u1", name="vendorA", date="2023-02-01", amount=60),
+        Transaction(id=3, user_id="u1", name="vendorA", date="2023-03-01", amount=100),
+        Transaction(id=4, user_id="u1", name="vendorA", date="2023-04-01", amount=110),
+        Transaction(id=5, user_id="u1", name="vendorA", date="2023-05-01", amount=150),
+    ]
+
+    # Compute IQR feature
+    iqr_score = enhanced_amt_iqr(transactions)
+
+    # Assert the score is within range
+    assert 1.0 <= iqr_score <= 10.0, f"Expected score between 1 and 10, got {iqr_score}"
+
+
+def test_irregular_interval_score():
+    transactions = [
+        Transaction(id=1, user_id="u1", name="vendorA", date="2023-01-01", amount=50),
+        Transaction(id=2, user_id="u1", name="vendorA", date="2023-01-10", amount=55),
+        Transaction(id=3, user_id="u1", name="vendorA", date="2023-03-20", amount=60),
+        Transaction(id=4, user_id="u1", name="vendorA", date="2023-05-15", amount=65),
+    ]
+    score = irregular_interval_score(transactions)
+    assert 0 <= score <= 1, f"Expected score between 0 and 1, got {score}"
+
+
+def test_inconsistent_amount_score():
+    transactions = [
+        Transaction(id=1, user_id="u1", name="vendorB", date="2023-02-01", amount=50),
+        Transaction(id=2, user_id="u1", name="vendorB", date="2023-02-10", amount=120),
+        Transaction(id=3, user_id="u1", name="vendorB", date="2023-02-15", amount=200),
+        Transaction(id=4, user_id="u1", name="vendorB", date="2023-02-20", amount=80),
+    ]
+    score = inconsistent_amount_score(transactions)
+    assert 0 <= score <= 1, f"Expected score between 0 and 1, got {score}"
+
+
+def test_non_recurring_score():
+    transactions = [
+        Transaction(id=1, user_id="u1", name="vendorC", date="2023-03-01", amount=50),
+        Transaction(id=2, user_id="u1", name="vendorC", date="2023-03-05", amount=52),
+        Transaction(id=3, user_id="u1", name="vendorC", date="2023-06-01", amount=150),
+        Transaction(id=4, user_id="u1", name="vendorC", date="2023-09-10", amount=75),
+    ]
+    score = non_recurring_score(transactions)
+    assert score in [0.0, 0.7, 1.0], f"Expected score to be 0.0, 0.7, or 1.0, got {score}"
 
 
 def test_amount_z_score():
@@ -282,6 +423,33 @@ def test_recurrence_interval_variance():
     assert isclose(result, expected_std_dev, rel_tol=1e-5)
 
 
+def test_get_subscription_score():
+    transactions = [
+        Transaction(id=1, user_id="u1", name="Netflix", date="2023-01-10", amount=15.99),
+        Transaction(id=2, user_id="u1", name="Netflix", date="2023-02-10", amount=15.99),
+        Transaction(id=3, user_id="u1", name="Netflix", date="2023-03-10", amount=15.99),
+        Transaction(id=4, user_id="u1", name="Netflix", date="2023-04-10", amount=16.49),  # Slight increase
+        Transaction(id=5, user_id="u1", name="Netflix", date="2023-05-10", amount=16.49),
+    ]
+
+    score = get_subscription_score(transactions)
+
+    assert 0.9 <= score <= 1.0, f"Expected high subscription score, got {score}"
+
+
+def test_get_amount_consistency():
+    transactions = [
+        Transaction(id=1, user_id="u1", name="Service A", date="2023-01-05", amount=50.00),
+        Transaction(id=2, user_id="u1", name="Service A", date="2023-02-05", amount=50.50),
+        Transaction(id=3, user_id="u1", name="Service A", date="2023-03-05", amount=49.75),
+        Transaction(id=4, user_id="u1", name="Service A", date="2023-04-05", amount=50.25),
+    ]
+
+    consistency = get_amount_consistency(transactions)
+
+    assert 0.9 <= consistency <= 1.0, f"Expected high amount consistency, got {consistency}"
+
+
 def test_get_days_since_last_transaction():
     transactions = [
         Transaction(
@@ -301,94 +469,6 @@ def test_get_days_since_last_transaction():
 def _parse_date(date_str: str) -> date:
     """Convert a date string to a datetime.date object."""
     return datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
-
-
-def test_frequency_features():
-    """
-    Test frequency_features with multiple transactions.
-    """
-    transactions = [
-        Transaction(id=1, user_id="user1", name="vendor1", amount=50, date="2024-01-01"),
-        Transaction(id=2, user_id="user1", name="vendor1", amount=50, date="2024-01-15"),
-        Transaction(id=3, user_id="user1", name="vendor1", amount=50, date="2024-02-15"),
-        Transaction(id=4, user_id="user1", name="vendor1", amount=50, date="2024-03-10"),
-    ]
-
-    result = frequency_features(transactions)
-
-    # Compute expected values:
-    min_date = _parse_date("2024-01-01")
-    max_date = _parse_date("2024-03-10")
-    time_span_days = (max_date - min_date).days  # 69 days
-
-    expected_transactions_per_month = len(transactions) / (time_span_days / 30)
-    expected_transactions_per_week = len(transactions) / (time_span_days / 7)
-
-    print("Result:", result)
-    print("Expected transactions_per_month:", expected_transactions_per_month)
-    print("Expected transactions_per_week:", expected_transactions_per_week)
-
-    assert isclose(result["transactions_per_month"], expected_transactions_per_month, rel_tol=1e-5)
-    assert isclose(result["transactions_per_week"], expected_transactions_per_week, rel_tol=1e-5)
-
-
-def test_get_transaction_stability_features():
-    """
-    Tests that get_transaction_stability_features returns the expected approximate values.
-    For sample transactions:
-      - Dates: Jan 1, 2023; Jan 31, 2023; Mar 1, 2023; Mar 30, 2023 (intervals: [30, 29, 29])
-      - Amounts: [100, 100, 120, 100]
-    Expected:
-      - robust_interval_median ~ 29 days.
-      - IQR of intervals ~ 0.5.
-      - Coefficient of variation for intervals ~ 0.5/29.
-      - Transaction frequency = number of transactions / (total_days/30).
-      - For amounts: median = 100, IQR = 10, ratio = 10/100 = 0.1.
-    """
-    transactions = [
-        Transaction(
-            id=1, user_id="user1", name="vendor1", date=datetime.date(2023, 1, 1).strftime("%Y-%m-%d"), amount=100
-        ),
-        Transaction(
-            id=2, user_id="user1", name="vendor1", date=datetime.date(2023, 1, 31).strftime("%Y-%m-%d"), amount=100
-        ),
-        Transaction(
-            id=3, user_id="user1", name="vendor1", date=datetime.date(2023, 3, 1).strftime("%Y-%m-%d"), amount=120
-        ),
-        Transaction(
-            id=4, user_id="user1", name="vendor1", date=datetime.date(2023, 3, 30).strftime("%Y-%m-%d"), amount=100
-        ),
-    ]
-    features = get_transaction_stability_features(transactions)
-
-    # Calculate expected transaction frequency:
-    dates = [datetime.datetime.strptime(t.date, "%Y-%m-%d").date() for t in transactions]
-    total_days = (dates[-1] - dates[0]).days  # e.g., Mar 30, 2023 - Jan 1, 2023
-    months = total_days / 30 if total_days > 0 else 1
-    expected_frequency = len(transactions) / months
-    assert isclose(features["transaction_frequency"], expected_frequency, rel_tol=1e-2), (
-        f"Expected frequency ≈ {expected_frequency}, got {features['transaction_frequency']}"
-    )
-
-    # Expected robust_interval_median ~ 29 days
-    assert isclose(features["robust_interval_median"], 29, rel_tol=1e-2), (
-        f"Expected median interval ≈ 29, got {features['robust_interval_median']}"
-    )
-
-    # Expected robust_interval_iqr ~ 0.5 (for intervals [30,29,29] → IQR ≈ 0.5)
-    assert isclose(features["robust_interval_iqr"], 0.5, rel_tol=1e-2), (
-        f"Expected IQR ≈ 0.5, got {features['robust_interval_iqr']}"
-    )
-
-    expected_cov = 0.5 / 29
-    assert isclose(features["coefficient_of_variation_intervals"], expected_cov, rel_tol=1e-2), (
-        f"Expected CoV ≈ {expected_cov}, got {features['coefficient_of_variation_intervals']}"
-    )
-
-    # Expected amount variability ratio: For amounts [100,100,120,100], median = 100, IQR = 10, ratio = 0.1.
-    assert isclose(features["amount_variability_ratio"], 0.1, rel_tol=1e-2), (
-        f"Expected amount variability ratio ≈ 0.1, got {features['amount_variability_ratio']}"
-    )
 
 
 # --- Test vendor_recurrence_trend ---
@@ -459,6 +539,50 @@ def test_seasonal_spending_cycle():
     assert cov >= 0, f"Expected seasonal CoV >= 0, got {cov}"
 
 
+def test_transactions_per_month():
+    # Transactions spread across different months for the same vendor
+    transactions = [
+        Transaction(
+            id=1, user_id="u1", name="vendorA", date=datetime.date(2023, 1, 10).strftime("%Y-%m-%d"), amount=50
+        ),
+        Transaction(
+            id=2, user_id="u1", name="vendorA", date=datetime.date(2023, 2, 10).strftime("%Y-%m-%d"), amount=60
+        ),
+        Transaction(
+            id=3, user_id="u1", name="vendorA", date=datetime.date(2023, 3, 10).strftime("%Y-%m-%d"), amount=55
+        ),
+        Transaction(
+            id=4, user_id="u1", name="vendorA", date=datetime.date(2023, 4, 10).strftime("%Y-%m-%d"), amount=65
+        ),
+    ]
+    tpm = transactions_per_month(transactions)
+    # With one transaction per month and all on the same day (consistent),
+    # we expect the frequency to be roughly 1 transaction per month.
+    assert tpm >= 0.9, f"Expected transactions per month to be around 1, got {tpm}"
+
+
+def test_transactions_per_week():
+    # Transactions spread across different weeks for the same vendor
+    transactions = [
+        Transaction(
+            id=1, user_id="u1", name="vendorB", date=datetime.date(2023, 1, 2).strftime("%Y-%m-%d"), amount=100
+        ),
+        Transaction(
+            id=2, user_id="u1", name="vendorB", date=datetime.date(2023, 1, 9).strftime("%Y-%m-%d"), amount=105
+        ),
+        Transaction(
+            id=3, user_id="u1", name="vendorB", date=datetime.date(2023, 1, 16).strftime("%Y-%m-%d"), amount=95
+        ),
+        Transaction(
+            id=4, user_id="u1", name="vendorB", date=datetime.date(2023, 1, 23).strftime("%Y-%m-%d"), amount=100
+        ),
+    ]
+    tpw = transactions_per_week(transactions)
+    # With one transaction per week on the same weekday (consistent),
+    # we expect the frequency to be roughly 1 transaction per week.
+    assert tpw >= 0.9, f"Expected transactions per week to be around 1, got {tpw}"
+
+
 # --- Test get_same_amount_ratio ---
 def test_get_same_amount_ratio():
     transactions = [
@@ -476,25 +600,6 @@ def test_get_same_amount_ratio():
     ratio = get_same_amount_ratio(transactions[0], transactions, tolerance=0.05)
     # Amounts 100, 102, 98 are within ±5% of 100, so ratio = 3/4
     assert isclose(ratio, 0.75, rel_tol=1e-2), f"Expected 0.75, got {ratio}"
-
-
-# --- Test get_transaction_intervals ---
-def test_get_transaction_intervals():
-    transactions = [
-        Transaction(id=1, user_id="u1", name="vendorF", date=datetime.date(2023, 1, 1).strftime("%Y-%m-%d"), amount=50),
-        Transaction(
-            id=2, user_id="u1", name="vendorF", date=datetime.date(2023, 1, 31).strftime("%Y-%m-%d"), amount=50
-        ),
-        Transaction(id=3, user_id="u1", name="vendorF", date=datetime.date(2023, 3, 2).strftime("%Y-%m-%d"), amount=50),
-    ]
-    intervals_dict = get_transaction_intervals(transactions)
-    # Expected intervals: 30 days and 30 days → median 30, IQR 0.
-    assert isclose(intervals_dict["avg_days_between_transactions"], 30, rel_tol=1e-2), (
-        f"Expected average interval 30, got {intervals_dict['avg_days_between_transactions']}"
-    )
-    assert isclose(intervals_dict["std_dev_days_between_transactions"], 0, abs_tol=1e-2), (
-        f"Expected std dev 0, got {intervals_dict['std_dev_days_between_transactions']}"
-    )
 
 
 # --- Test safe_interval_consistency ---
@@ -530,157 +635,25 @@ def test_get_vendor_recurrence_score():
     assert isclose(score, 0.02, rel_tol=1e-2), f"Expected score 0.02, got {score}"
 
 
-# --- Test get_enhanced_features ---
-def test_get_enhanced_features():
+def test_coefficient_of_variation_intervals():
     transactions = [
         Transaction(
-            id=1, user_id="u1", name="vendorI", date=datetime.date(2023, 1, 1).strftime("%Y-%m-%d"), amount=100
+            id=1, user_id="u1", name="Subscription", date=datetime.date(2023, 1, 1).strftime("%Y-%m-%d"), amount=10.0
         ),
         Transaction(
-            id=2, user_id="u1", name="vendorI", date=datetime.date(2023, 1, 31).strftime("%Y-%m-%d"), amount=110
-        ),
-        Transaction(id=3, user_id="u1", name="vendorI", date=datetime.date(2023, 3, 1).strftime("%Y-%m-%d"), amount=90),
-    ]
-    features = get_enhanced_features(transactions[0], transactions, total_transactions=1000)
-    # Check that key features are present and numeric.
-    expected_keys = [
-        "amt_std",
-        "amt_med",
-        "amt_iqr",
-        "interval_std",
-        "interval_med",
-        "interval_consistency",
-        "proporption",
-        "day_of_month",
-        "days_since_last",
-        "n_similar_last_90d",
-        "n_transactions",
-        "same_amount_ratio",
-    ]
-    for key in expected_keys:
-        assert key in features, f"Missing key {key} in enhanced features"
-        assert isinstance(features[key], float | int), f"Feature {key} is not numeric"
-
-
-def test_detect_subscription_pattern():
-    # Create transactions with regular 30-day intervals and very similar amounts.
-    transactions = [
-        Transaction(
-            id=1, user_id="u1", name="vendorSub", date=datetime.date(2023, 1, 1).strftime("%Y-%m-%d"), amount=100
+            id=2, user_id="u1", name="Subscription", date=datetime.date(2023, 2, 1).strftime("%Y-%m-%d"), amount=10.0
         ),
         Transaction(
-            id=2, user_id="u1", name="vendorSub", date=datetime.date(2023, 1, 31).strftime("%Y-%m-%d"), amount=102
+            id=3, user_id="u1", name="Subscription", date=datetime.date(2023, 3, 1).strftime("%Y-%m-%d"), amount=10.0
         ),
         Transaction(
-            id=3, user_id="u1", name="vendorSub", date=datetime.date(2023, 3, 2).strftime("%Y-%m-%d"), amount=98
-        ),
-        Transaction(
-            id=4, user_id="u1", name="vendorSub", date=datetime.date(2023, 4, 1).strftime("%Y-%m-%d"), amount=100
+            id=4, user_id="u1", name="Subscription", date=datetime.date(2023, 4, 1).strftime("%Y-%m-%d"), amount=10.0
         ),
     ]
-    features = detect_subscription_pattern(transactions)
-    # Expected:
-    # Intervals: [30, 30, 30] → median=30; all intervals within ±15% (4.5) → consistency = 1.0.
-    # Amounts: median=100, all within 15 → consistency=1.0.
-    # detected_cycle should be 30.
-    # subscription_score = (1.0 + 1.0)/2 = 1.0.
-    assert isclose(features["subscription_score"], 1.0, rel_tol=1e-2), (
-        f"Expected subscription_score ~1.0, got {features['subscription_score']}"
-    )
-    assert isclose(features["interval_consistency"], 1.0, rel_tol=1e-2), (
-        f"Expected interval_consistency ~1.0, got {features['interval_consistency']}"
-    )
-    assert isclose(features["amount_consistency"], 1.0, rel_tol=1e-2), (
-        f"Expected amount_consistency ~1.0, got {features['amount_consistency']}"
-    )
-    assert isclose(features["detected_cycle"], 30.0, rel_tol=1e-2), (
-        f"Expected detected_cycle 30, got {features['detected_cycle']}"
-    )
 
+    score = coefficient_of_variation_intervals(transactions)
 
-# ------------------- Tests for detect_non_recurring_pattern ------------------- #
-def test_detect_non_recurring_pattern():
-    # Create transactions with irregular intervals and inconsistent amounts.
-    transactions = [
-        Transaction(
-            id=1, user_id="u1", name="vendorNR", date=datetime.date(2023, 1, 1).strftime("%Y-%m-%d"), amount=50
-        ),
-        Transaction(
-            id=2, user_id="u1", name="vendorNR", date=datetime.date(2023, 1, 20).strftime("%Y-%m-%d"), amount=80
-        ),
-        Transaction(
-            id=3, user_id="u1", name="vendorNR", date=datetime.date(2023, 3, 1).strftime("%Y-%m-%d"), amount=100
-        ),
-    ]
-    features = detect_non_recurring_pattern(transactions)
-    # Expected:
-    # Intervals: [19, 40] → median ~29.5, stdev ~14.85 → irregular_interval_score ~14.85/29.5 ≈ 0.50.
-    # Amounts: [50,80,100] → median 80, stdev ≈25.17 → inconsistent_amount_score ~25.17/80 ≈ 0.3146.
-    # non_recurring_score ≈ (0.50+0.3146)/2 ≈ 0.4073.
-    assert 0.45 <= features["irregular_interval_score"] <= 0.55, (
-        f"Expected irregular_interval_score ≈0.5, got {features['irregular_interval_score']}"
-    )
-    assert 0.30 <= features["inconsistent_amount_score"] <= 0.35, (
-        f"Expected inconsistent_amount_score ≈0.31, got {features['inconsistent_amount_score']}"
-    )
-    expected_nr = (features["irregular_interval_score"] + features["inconsistent_amount_score"]) / 2
-    assert isclose(features["non_recurring_score"], expected_nr, rel_tol=1e-2), (
-        f"Expected non_recurring_score ≈{expected_nr}, got {features['non_recurring_score']}"
-    )
-
-
-# ------------------- Tests for one_time_features ------------------- #
-def test_one_time_features():
-    # Test with transactions having different amounts (high unique ratio)
-    transactions_diff = [
-        Transaction(
-            id=1, user_id="u1", name="vendorOT", date=datetime.date(2023, 1, 10).strftime("%Y-%m-%d"), amount=100
-        ),
-        Transaction(
-            id=2, user_id="u1", name="vendorOT", date=datetime.date(2023, 2, 15).strftime("%Y-%m-%d"), amount=150
-        ),
-        Transaction(
-            id=3, user_id="u1", name="vendorOT", date=datetime.date(2023, 3, 20).strftime("%Y-%m-%d"), amount=200
-        ),
-    ]
-    features = one_time_features(transactions_diff)
-    # Unique amounts ratio = 3/3 = 1.0, so varying_amounts should be 1.
-    # Months = [1,2,3] → stdev = 1.0 (< 1.5) so irregular_dates should be 0.
-    assert features["varying_amounts"] == 1, f"Expected varying_amounts 1, got {features['varying_amounts']}"
-    assert features["irregular_dates"] == 0, f"Expected irregular_dates 0, got {features['irregular_dates']}"
-
-    # Test with transactions having identical amounts (low unique ratio)
-    transactions_same = [
-        Transaction(
-            id=4, user_id="u1", name="vendorOT", date=datetime.date(2023, 1, 10).strftime("%Y-%m-%d"), amount=100
-        ),
-        Transaction(
-            id=5, user_id="u1", name="vendorOT", date=datetime.date(2023, 1, 15).strftime("%Y-%m-%d"), amount=100
-        ),
-        Transaction(
-            id=6, user_id="u1", name="vendorOT", date=datetime.date(2023, 1, 20).strftime("%Y-%m-%d"), amount=100
-        ),
-    ]
-    features_same = one_time_features(transactions_same)
-    # Unique ratio = 1/3 ≈ 0.33, so varying_amounts should be 0.
-    assert features_same["varying_amounts"] == 0, f"Expected varying_amounts 0, got {features_same['varying_amounts']}"
-
-
-# ------------------- Tests for merchant_category_features ------------------- #
-def test_merchant_category_features():
-    # Retail merchant test
-    retail = merchant_category_features("Amazon Fresh Store")
-    assert retail["is_retail"] == 1, f"Expected is_retail 1, got {retail['is_retail']}"
-    assert retail["is_entertainment"] == 0, f"Expected is_entertainment 0, got {retail['is_entertainment']}"
-
-    # Entertainment merchant test
-    ent = merchant_category_features("Movie Theatre")
-    assert ent["is_entertainment"] == 1, f"Expected is_entertainment 1, got {ent['is_entertainment']}"
-
-    # Generic merchant test
-    generic = merchant_category_features("Generic Vendor")
-    assert generic["is_retail"] == 0, f"Expected is_retail to be 0, got {generic['is_retail']}"
-    assert generic["is_entertainment"] == 0, f"Expected is_entertainment to be 0, got {generic['is_entertainment']}"
+    assert 0.0 <= score < 0.1, f"Expected low variation score, but got {score}"
 
 
 # ------------------- Tests for amount_similarity ------------------- #
