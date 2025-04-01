@@ -489,6 +489,20 @@ from recur_scan.features_tife import (
     get_transaction_frequency as get_transaction_frequency_tife,
 )
 from recur_scan.features_victor import get_avg_days_between
+from recur_scan.features_yoloye import (
+    get_delayed_annual,
+    get_delayed_fortnightly,
+    get_delayed_monthly,
+    get_delayed_quarterly,
+    get_delayed_semi_annual,
+    get_delayed_weekly,
+    get_early_annual,
+    get_early_fortnightly,
+    get_early_monthly,
+    get_early_quarterly,
+    get_early_semi_annual,
+    get_early_weekly,
+)
 from recur_scan.transactions import Transaction
 from recur_scan.utils import parse_date
 
@@ -956,4 +970,17 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "recurring_confidence_score": get_recurring_confidence_score_naomi(transaction, all_transactions),
         "time_regularity_score": get_time_regularity_score_naomi(transaction, all_transactions),
         "outlier_score": get_outlier_score_naomi(transaction, all_transactions),
+        # Yoloye's features
+        "delayed_weekly": get_delayed_weekly(transaction, all_transactions),
+        "delayed_fortnightly": get_delayed_fortnightly(transaction, all_transactions),
+        "delayed_monthly": get_delayed_monthly(transaction, all_transactions),
+        "delayed_quarterly": get_delayed_quarterly(transaction, all_transactions),
+        "delayed_semi_annual": get_delayed_semi_annual(transaction, all_transactions),
+        "delayed_annual": get_delayed_annual(transaction, all_transactions),
+        "early_weekly": get_early_weekly(transaction, all_transactions),
+        "early_fortnightly": get_early_fortnightly(transaction, all_transactions),
+        "early_monthly": get_early_monthly(transaction, all_transactions),
+        "early_quarterly": get_early_quarterly(transaction, all_transactions),
+        "early_semi_annual": get_early_semi_annual(transaction, all_transactions),
+        "early_annual": get_early_annual(transaction, all_transactions),
     }
