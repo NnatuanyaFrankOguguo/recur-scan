@@ -266,6 +266,7 @@ from recur_scan.features_freedom import (
     get_periodicity_confidence,
     get_recurrence_streak,
 )
+from recur_scan.features_gideon import is_microsoft_xbox_same_or_near_day
 from recur_scan.features_happy import (
     get_day_of_month_consistency as get_day_of_month_consistency_happy,
 )
@@ -983,4 +984,6 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "early_quarterly": get_early_quarterly(transaction, all_transactions),
         "early_semi_annual": get_early_semi_annual(transaction, all_transactions),
         "early_annual": get_early_annual(transaction, all_transactions),
+        # Gideon's features
+        "is_microsoft_xbox_same_or_near_day": is_microsoft_xbox_same_or_near_day(transaction, all_transactions),
     }
