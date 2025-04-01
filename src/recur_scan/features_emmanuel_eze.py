@@ -17,7 +17,8 @@ def detect_sequence_patterns(
     vendor_txs = [
         t
         for t in all_transactions
-        if t.name.lower() == transaction.name.lower() and abs(t.amount - transaction.amount) / transaction.amount < 0.05
+        if t.name.lower() == transaction.name.lower()
+        and abs(t.amount - transaction.amount) / max(transaction.amount, 1) < 0.05
     ]
 
     if len(vendor_txs) < min_occurrences:
@@ -127,8 +128,8 @@ def get_recurring_transaction_confidence(transaction: Transaction, all_transacti
 
     # 5. Combine into a Confidence Score
     score = (
-        (1 / (1 + amount_stability)) * 0.3  # Weight: 30%
-        + (1 / (1 + interval_regularities)) * 0.3  # Weight: 30%
+        (1 / (1 + max(amount_stability, 0))) * 0.3  # Weight: 30%
+        + (1 / (1 + max(interval_regularities, 0))) * 0.3  # Weight: 30%
         + (transaction_frequency / max(transaction_frequency, 1)) * 0.2  # Weight: 20%
         + metadata_similarity * 0.2  # Weight: 20%
     )

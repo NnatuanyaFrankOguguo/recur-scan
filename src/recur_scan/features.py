@@ -78,6 +78,22 @@ from recur_scan.features_ebenezer import (
     get_std_amount_same_month,
     get_std_amount_same_name,
 )
+from recur_scan.features_efehi import (
+    get_irregular_periodicity,
+    get_irregular_periodicity_with_tolerance,
+    get_n_same_name_transactions,
+    get_time_between_transactions,
+    get_transaction_amount_stability,
+    get_transaction_time_of_month,
+    get_vendor_recurrence_consistency,
+    get_vendor_recurring_ratio,
+)
+from recur_scan.features_efehi import (
+    get_transaction_frequency as get_transaction_frequency_efehi,
+)
+from recur_scan.features_efehi import (
+    get_user_transaction_frequency as get_user_transaction_frequency_efehi,
+)
 from recur_scan.features_elliot import (
     get_is_always_recurring as get_is_always_recurring_elliot,
 )
@@ -287,20 +303,28 @@ from recur_scan.features_laurels import (
     transaction_pattern_complexity,
 )
 from recur_scan.features_naomi import (
-    get_irregular_periodicity,
-    get_irregular_periodicity_with_tolerance,
-    get_n_same_name_transactions,
-    get_time_between_transactions,
-    get_transaction_amount_stability,
-    get_transaction_time_of_month,
-    get_vendor_recurrence_consistency,
-    get_vendor_recurring_ratio,
+    get_cluster_label,
 )
 from recur_scan.features_naomi import (
-    get_transaction_frequency as get_transaction_frequency_naomi,
+    get_is_monthly_recurring as get_is_monthly_recurring_naomi,
 )
 from recur_scan.features_naomi import (
-    get_user_transaction_frequency as get_user_transaction_frequency_naomi,
+    get_is_similar_amount as get_is_similar_amount_naomi,
+)
+from recur_scan.features_naomi import (
+    get_outlier_score as get_outlier_score_naomi,
+)
+from recur_scan.features_naomi import (
+    get_recurring_confidence_score as get_recurring_confidence_score_naomi,
+)
+from recur_scan.features_naomi import (
+    get_subscription_keyword_score as get_subscription_keyword_score_naomi,
+)
+from recur_scan.features_naomi import (
+    get_time_regularity_score as get_time_regularity_score_naomi,
+)
+from recur_scan.features_naomi import (
+    get_transaction_interval_consistency as get_transaction_interval_consistency_naomi,
 )
 from recur_scan.features_nnanna import (
     get_average_transaction_amount,
@@ -870,15 +894,15 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "is_quarterly": get_is_quarterly(transaction, all_transactions),
         "average_transaction_amount_ernest": get_average_transaction_amount_ernest(transaction, all_transactions),
         "is_subscription_based": get_is_subscription_based(transaction),
-        # Naomi's features
+        # Efehi's features
         "transaction_time_of_month": get_transaction_time_of_month(transaction),
         "transaction_amount_stability": get_transaction_amount_stability(transaction, all_transactions),
         "time_between_transactions": get_time_between_transactions(transaction, all_transactions),
-        "transaction_frequency_naomi": get_transaction_frequency_naomi(transaction, all_transactions),
+        "transaction_frequency_efehi": get_transaction_frequency_efehi(transaction, all_transactions),
         "n_same_name_transactions": get_n_same_name_transactions(transaction, all_transactions),
         "irregular_periodicity": get_irregular_periodicity(transaction, all_transactions),
         "irregular_periodicity_with_tolerance": get_irregular_periodicity_with_tolerance(transaction, all_transactions),
-        "user_transaction_frequency_naomi": get_user_transaction_frequency_naomi(transaction.user_id, all_transactions),
+        "user_transaction_frequency_efehi": get_user_transaction_frequency_efehi(transaction.user_id, all_transactions),
         "vendor_recurring_ratio": get_vendor_recurring_ratio(transaction, all_transactions),
         "vendor_recurrence_consistency": get_vendor_recurrence_consistency(transaction, all_transactions),
         # Adedotun's features
@@ -921,4 +945,15 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "is_sequence_weekly": 1.0 if sequence_features["sequence_pattern"] == "weekly" else 0.0,
         "is_sequence_monthly": 1.0 if sequence_features["sequence_pattern"] == "monthly" else 0.0,
         "sequence_length": sequence_features["sequence_length"],
+        # Naomi's features
+        "is_monthly_recurring_naomi": float(get_is_monthly_recurring_naomi(transaction, all_transactions)),
+        "is_similar_amount_naomi": float(get_is_similar_amount_naomi(transaction, all_transactions)),
+        "transaction_interval_consistency_naomi": get_transaction_interval_consistency_naomi(
+            transaction, all_transactions
+        ),
+        "cluster_label": float(get_cluster_label(transaction, all_transactions)),
+        "subscription_keyword_score": get_subscription_keyword_score_naomi(transaction),
+        "recurring_confidence_score": get_recurring_confidence_score_naomi(transaction, all_transactions),
+        "time_regularity_score": get_time_regularity_score_naomi(transaction, all_transactions),
+        "outlier_score": get_outlier_score_naomi(transaction, all_transactions),
     }

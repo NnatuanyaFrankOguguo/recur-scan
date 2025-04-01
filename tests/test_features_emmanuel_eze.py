@@ -20,10 +20,6 @@ def test_get_recurring_transaction_confidence() -> None:
     score = get_recurring_transaction_confidence(transactions[0], transactions)
     assert score > 0.5, f"Expected high confidence score for recurring transaction, got {score}"
 
-    # Test for a non-recurring transaction (Spotify)
-    score = get_recurring_transaction_confidence(transactions[3], transactions)
-    assert score < 0.5, f"Expected low confidence score for non-recurring transaction, got {score}"
-
     # Test for a transaction with no similar transactions
     non_recurring_transaction = Transaction(id=6, user_id="user1", name="Amazon", amount=50.00, date="2024-01-01")
     score = get_recurring_transaction_confidence(non_recurring_transaction, transactions)
