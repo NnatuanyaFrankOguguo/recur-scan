@@ -30,13 +30,13 @@ from recur_scan.transactions import group_transactions, read_labeled_transaction
 # configure the script
 
 n_cv_folds = 5  # number of cross-validation folds, could be 5
-do_hyperparameter_optimization = True  # set to False to use the default hyperparameters
+do_hyperparameter_optimization = False  # set to False to use the default hyperparameters
 search_type = "grid"  # "grid" or "random"
 n_hpo_iters = 200  # number of hyperparameter optimization iterations
 n_jobs = -1  # number of jobs to run in parallel (set to 1 if your laptop gets too hot)
 
-in_path = "../../data/train.csv"
-out_dir = "../../data/training_out"
+in_path = "training data goes here"
+out_dir = "output directory goes here"
 
 # %%
 # parse script arguments from command line
@@ -89,14 +89,18 @@ logger.info(f"Converted {len(features)} features into a {X.shape} matrix")
 
 
 # %%
-# X_selected = X[:, selected_features]  # type: ignore
-X_selected = X
-print(X_selected.shape)
-
-# %%
 #
 # HYPERPARAMETER OPTIMIZATION
 #
+
+# select the features tu use for hyperparameter optimizatino
+# (we can uncomment the following line to use the selected features)
+
+# X_hpo = X[:, selected_features]  # type: ignore
+X_hpo = X
+print(X_hpo.shape)
+
+# %%
 
 if do_hyperparameter_optimization:
     # Define parameter grid
@@ -118,7 +122,7 @@ if do_hyperparameter_optimization:
             model, param_dist, n_iter=n_hpo_iters, cv=n_cv_folds, scoring="f1", n_jobs=n_jobs, verbose=3
         )
     print(f"Searching for best hyperparameters with {search_type} search")
-    search.fit(X_selected, y)
+    search.fit(X_hpo, y)
     logger.info(f"Best F1 score: {search.best_score_}")
 
     print("Best Hyperparameters:")
@@ -213,19 +217,28 @@ write_transactions(os.path.join(out_dir, "bias_errors.csv"), misclassified, y)
 # USE CROSS-VALIDATION TO GET THE VARIANCE ERRORS
 #
 
+# select the features tu use for cross-validation
+# (we can uncomment the following line to use the selected features)
+
+# X_cv = X[:, selected_features]
+X_cv = X
+print(X_cv.shape)
+
+# %%
+
 cv = StratifiedKFold(n_splits=n_cv_folds, shuffle=True, random_state=42)
 misclassified = []
 precisions = []
 recalls = []
 f1s = []
 
-for fold, (train_idx, val_idx) in enumerate(cv.split(X, y)):
+for fold, (train_idx, val_idx) in enumerate(cv.split(X_cv, y)):
     logger.info(f"Fold {fold + 1} of {n_cv_folds}")
     # Get training and validation data
-    X_train = [X[i] for i in train_idx]  # type: ignore
-    X_val = [X[i] for i in val_idx]  # type: ignore
-    y_train = [y[i] for i in train_idx]
-    y_val = [y[i] for i in val_idx]
+    X_train = [X_cv[i] for i in train_idx]  # type: ignore
+    X_val = [X_cv[i] for i in val_idx]  # type: ignore
+    y_train = [y[i] for i in train_idx]  # type: ignore
+    y_val = [y[i] for i in val_idx]  # type: ignore
     transactions_val = [transactions[i] for i in val_idx]  # Keep the original transaction instances for this fold
 
     # Train the model
@@ -297,43 +310,26 @@ rfecv = RFECV(
     step=1,
     cv=cv,
     scoring="f1",  # Metric to evaluate the model
-    min_features_to_select=100,  # Minimum number of features to select
+    min_features_to_select=50,  # Minimum number of features to select
     n_jobs=n_jobs,
 )
 
-# # Fit the RFECV
+# Fit the RFECV
 rfecv.fit(X, y)
 logger.info(f"Optimal number of features: {rfecv.n_features_}")
 
-# # Get the selected features
+# Get the selected features
 selected_features = [i for i, selected in enumerate(rfecv.support_) if selected]
 selected_feature_names = [feature_names[i] for i in selected_features]
 print("Selected feature names")
 for feature in selected_feature_names:
     print(feature)
 
-# rfecv = ProgressiveRFECV(
-#     estimator=model,
-#     step=1,
-#     cv=cv,
-#     scoring="f1",
-#     min_features_to_select=1,
-#     n_jobs=n_jobs,
-#     early_stopping=False  # Enable early stopping
-# )
-
-# rfecv.fit(X, y, feature_names=feature_names)
-# logger.info(f"Optimal number of features: {rfecv.n_features_}")
-# logger.info(f"Best F1 score: {rfecv.best_score:.4f}")
-
-# # Get the selected features
-# selected_features = rfecv.feature_names[rfecv.support_]
-# logger.info(f"Optimal number of features: {rfecv.n_features_}")
-# logger.info(f"Selected features: {selected_features.tolist()}")
-
-# print the eliminated features
-# for i, feature in enumerate(reversed(rfecv.eliminated_features)):
-#     print(f"{i} {feature[0]}")
+# get the eliminated features
+eliminated_features = [feature_names[i] for i in range(len(feature_names)) if i not in selected_features]
+print("Eliminated feature names")
+for feature in eliminated_features:
+    print(feature)
 
 # %%
 # plot the RFECV results

@@ -79,7 +79,7 @@ def get_time_regularity_score(transaction: Transaction, transactions: list[Trans
         return 0.0
     avg_interval = mean(intervals)
     variance = sum(abs(x - avg_interval) for x in intervals) / len(intervals)
-    return max(0.0, 1.0 - (3 * variance / avg_interval))
+    return max(0.0, 1.0 - (3 * variance / max(avg_interval, 1)))
 
 
 def get_outlier_score(transaction: Transaction, transactions: list[Transaction]) -> float:

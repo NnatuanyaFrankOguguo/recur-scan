@@ -333,7 +333,7 @@ def enhanced_amt_iqr(all_transactions: list[Transaction]) -> float:
     """Interquartile range of amounts, scaled to 1-10."""
     amounts = [t.amount for t in all_transactions]
 
-    if not amounts:
+    if not amounts or max(amounts) == 0:
         return 1.0
 
     iqr = float(np.subtract(*np.percentile(amounts, [75, 25])))  # Convert NumPy float to Python float
@@ -363,7 +363,7 @@ def enhanced_days_since_last(transaction: Transaction, all_transactions: list[Tr
     days_since = (parse_date(transaction.date) - previous_dates[-1]).days
 
     # Score based on how closely it matches the expected recurrence interval
-    similarity_score = max(1.0, 10.0 - (abs(days_since - avg_interval) / avg_interval) * 9)
+    similarity_score = max(1.0, 10.0 - (abs(days_since - avg_interval) / max(avg_interval, 1)) * 9)
 
     return round(similarity_score, 2)  # Round for stability
 
@@ -377,7 +377,7 @@ def enhanced_n_similar_last_n_days(
         t
         for t in all_transactions
         if abs(parse_date(t.date) - parse_date(transaction.date)).days <= days
-        and abs(t.amount - transaction.amount) / transaction.amount <= 0.051  # Slightly increased tolerance
+        and abs(t.amount - transaction.amount) / max(transaction.amount, 1) <= 0.051  # Slightly increased tolerance
     ]
 
     count = len(similar_transactions)
@@ -803,7 +803,9 @@ def proportional_timing_deviation(
     if abs(current_interval - median_interval) <= days_flexibility:
         return 1.0  # Fully consistent if within range
 
-    return max(0.0, 1 - (abs(current_interval - median_interval) / median_interval))  # Ensure result is non-negative
+    return max(
+        0.0, 1 - (abs(current_interval - max(median_interval, 1)) / max(median_interval, 1))
+    )  # Ensure result is non-negative
 
 
 def amount_similarity(transaction: Transaction, transactions: list[Transaction], tolerance: float = 0.05) -> float:
