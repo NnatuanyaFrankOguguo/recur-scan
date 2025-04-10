@@ -37,8 +37,8 @@ search_type = "random"  # "grid" or "random"
 n_hpo_iters = 200  # number of hyperparameter optimization iterations
 n_jobs = -1  # number of jobs to run in parallel (set to 1 if your laptop gets too hot)
 
-in_path = "../data/train.csv"
-out_dir = "../data/training_xgb"
+in_path = "training file"
+out_dir = "output directory"
 
 # %%
 # parse script arguments from command line
@@ -174,7 +174,7 @@ else:
 
 # now that we have the best hyperparameters, train a model with them
 
-logger.info("Training the model")
+logger.info(f"Training the {model_type} model with {best_params}")
 if model_type == "rf":
     model = RandomForestClassifier(random_state=42, **best_params, n_jobs=n_jobs)
 elif model_type == "xgb":
@@ -196,10 +196,15 @@ for importance, feature in sorted_importances:
 
 # %%
 # save the model using joblib
+
+logger.info(f"Saving the {model_type} model to {out_dir}")
 joblib.dump(model, os.path.join(out_dir, "model.joblib"))
+# save the dict vectorizer as well
+joblib.dump(dict_vectorizer, os.path.join(out_dir, "dict_vectorizer.joblib"))
 # save the best params to a json file
 with open(os.path.join(out_dir, "best_params.json"), "w") as f:
     json.dump(best_params, f)
+logger.info(f"Model saved to {out_dir}")
 
 # %%
 #
