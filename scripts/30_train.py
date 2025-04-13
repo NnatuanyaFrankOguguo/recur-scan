@@ -14,6 +14,7 @@ import os
 
 import joblib
 import matplotlib.pyplot as plt
+import pandas as pd
 import shap
 import xgboost as xgb
 from loguru import logger
@@ -25,11 +26,13 @@ from sklearn.model_selection import GridSearchCV, GroupKFold, RandomizedSearchCV
 from tqdm import tqdm
 
 from recur_scan.features import get_features
+from recur_scan.features_original import get_new_features
 from recur_scan.transactions import group_transactions, read_labeled_transactions, write_transactions
 
 # %%
 # configure the script
 
+use_precomputed_features = True
 model_type = "xgb"  # "rf" or "xgb"
 n_cv_folds = 5  # number of cross-validation folds, could be 5
 do_hyperparameter_optimization = False  # set to False to use the default hyperparameters
@@ -38,6 +41,7 @@ n_hpo_iters = 200  # number of hyperparameter optimization iterations
 n_jobs = -1  # number of jobs to run in parallel (set to 1 if your laptop gets too hot)
 
 in_path = "training file"
+precomputed_features_path = "precomputed features file"
 out_dir = "output directory"
 
 # %%
@@ -45,9 +49,23 @@ out_dir = "output directory"
 parser = argparse.ArgumentParser(description="Train a model to identify recurring transactions.")
 parser.add_argument("--f", help="ignore; used by ipykernel_launcher")
 parser.add_argument("--input", type=str, default=in_path, help="Path to the input CSV file containing transactions.")
+parser.add_argument(
+    "--use_precomputed_features",
+    type=bool,
+    default=use_precomputed_features,
+    help="Use precomputed features instead of generating them from the input file.",
+)
+parser.add_argument(
+    "--precomputed_features",
+    type=str,
+    default=precomputed_features_path,
+    help="Path to the precomputed features CSV file.",
+)
 parser.add_argument("--output", type=str, default=out_dir, help="Path to the output directory.")
 args = parser.parse_args()
 in_path = args.input
+use_precomputed_features = args.use_precomputed_features
+precomputed_features_path = args.precomputed_features
 out_dir = args.output
 
 # Create output directory if it doesn't exist
@@ -76,16 +94,35 @@ user_ids = [transaction.user_id for transaction in transactions]
 
 logger.info("Getting features")
 
-# feature generation is parallelized using joblib
-# Use backend that works better with shared memory
-with joblib.parallel_backend("loky", n_jobs=n_jobs):
-    features = joblib.Parallel(verbose=1)(
-        joblib.delayed(get_features)(transaction, grouped_transactions[(transaction.user_id, transaction.name)])
-        for transaction in tqdm(transactions, desc="Processing transactions")
-    )
-logger.info(f"Generated {len(features)} features")
+if use_precomputed_features:
+    # read the precomputed features
+    features = pd.read_csv(precomputed_features_path).to_dict(orient="records")
+    logger.info(f"Read {len(features)} precomputed features")
+else:
+    # feature generation is parallelized using joblib
+    # Use backend that works better with shared memory
+    with joblib.parallel_backend("loky", n_jobs=n_jobs):
+        features = joblib.Parallel(verbose=1)(
+            joblib.delayed(get_features)(transaction, grouped_transactions[(transaction.user_id, transaction.name)])
+            for transaction in tqdm(transactions, desc="Processing transactions")
+        )
+    # save the features to a csv file
+    pd.DataFrame(features).to_csv(precomputed_features_path, index=False)
+    logger.info(f"Generated {len(features)} features")
 
-# convert features to a matrix for machine learning
+# %%
+# add new features
+new_features = [
+    get_new_features(transaction, grouped_transactions[(transaction.user_id, transaction.name)])
+    for transaction in tqdm(transactions, desc="Processing transactions")
+]
+# add the new features to the existing features
+for i, new_transaction_features in enumerate(new_features):
+    features[i].update(new_transaction_features)  # type: ignore
+logger.info(f"Added {len(new_features[0])} new features")
+
+# %%
+# convert all features to a matrix for machine learning
 dict_vectorizer = DictVectorizer(sparse=False)
 X = dict_vectorizer.fit_transform(features)
 feature_names = dict_vectorizer.get_feature_names_out()  # Get feature names from the vectorizer
