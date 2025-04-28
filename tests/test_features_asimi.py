@@ -17,6 +17,7 @@ from recur_scan.features_asimi import (
     get_burst_score,
     get_frequency_features,
     get_interval_precision,
+    get_loan_repayment_score,
     get_recurrence_streak,
     get_series_duration,
     get_temporal_consistency_features,
@@ -45,6 +46,7 @@ from recur_scan.features_asimi import (
     is_similar_amount,
     is_valid_recurring_transaction,
 )
+from recur_scan.features_dallanq import get_percent_transactions_same_amount
 from recur_scan.transactions import Transaction
 
 # def test_get_day_of_week_features(transactions) -> None:
@@ -389,6 +391,7 @@ def test_get_user_vendor_relationship_features() -> None:
     # 4 vendor1 transactions out of 5 total transactions
     assert result["user_vendor_dependency_asimi"] == pytest.approx(3 / 3)
     assert result["user_vendor_tenure_asimi"] == 14
+    assert pytest.approx(get_percent_transactions_same_amount(transactions[0], transactions)) == 1.0
 
 
 # Boolean-returning features
@@ -681,3 +684,26 @@ def test_is_common_subscription():
     # Within 1% threshold
     assert is_common_subscription(transactions[2]) is True  # -0.01%
     assert is_common_subscription(transactions[3]) is True
+
+
+def test_get_loan_repayment_score() -> None:
+    """Test that get_loan_repayment_score correctly identifies weekly loan patterns."""
+    # Create test transactions with weekly pattern (7 day intervals)
+    transactions = [
+        Transaction(id=1, user_id="user1", name="LoanCo", amount=250.0, date="2023-01-01"),
+        Transaction(id=2, user_id="user1", name="LoanCo", amount=250.0, date="2023-01-08"),
+        Transaction(id=3, user_id="user1", name="LoanCo", amount=250.0, date="2023-01-15"),
+        Transaction(id=4, user_id="user1", name="LoanCo", amount=250.0, date="2023-01-22"),
+        # Add a different merchant transaction that shouldn't affect the score
+        Transaction(id=5, user_id="user1", name="NotLoan", amount=100.0, date="2023-01-05"),
+    ]
+
+    # Test with the middle transaction
+    score = get_loan_repayment_score(transactions[2], transactions)
+
+    # Verify score is within valid range
+    assert 0.0 <= score <= 1.0
+    # Should be perfect score for consistent weekly payments
+    assert score == pytest.approx(1.0)
+    # Verify return type
+    assert isinstance(score, float)

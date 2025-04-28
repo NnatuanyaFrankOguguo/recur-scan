@@ -61,6 +61,7 @@ from recur_scan.features_asimi import (
     get_apple_interval_score as get_apple_interval_score_asimi,
     get_burst_score as get_burst_score_asimi,
     get_interval_precision as get_interval_precision_asimi,
+    get_loan_repayment_score as get_loan_repayment_score_asimi,
     get_recurrence_streak as get_recurrence_streak_asimi,
     get_series_duration as get_series_duration_asimi,
     get_temporal_consistency_features as get_temporal_consistency_features_asimi,
@@ -1272,6 +1273,7 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "apple_interval_score_asimi": get_apple_interval_score_asimi(transaction, all_transactions),
         "is_common_subscription_asimi": is_common_subscription_asimi(transaction),
         "is_common_subscription_amount_asimi": is_common_subscription_amount_asimi(transaction.amount),
+        "loan_repayment_score_asimi": get_loan_repayment_score_asimi(transaction, all_transactions),
         # Samuel's features
         "transaction_frequency_samuel": get_transaction_frequency_samuel(transaction, all_transactions),
         "amount_std_dev_samuel": get_amount_std_dev_samuel(transaction, all_transactions),
