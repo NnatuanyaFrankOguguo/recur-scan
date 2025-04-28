@@ -91,6 +91,8 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["recur_scan"]
+force-single-line = false  # Prevent splitting into single lines
+combine-as-imports = true  # combine aliased members into one import statement
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN"]  # Ignore all annotation rules in test files
