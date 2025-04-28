@@ -37,15 +37,20 @@ from recur_scan.features_adedotun import (
     is_recurring_core_at as is_recurring_core_adedotun,
 )
 from recur_scan.features_adeyinka import (
+    get_amount_consistency_score as get_amount_consistency_score_adeyinka,
     get_average_days_between_transactions as get_average_days_between_transactions_adeyinka,
+    get_day_of_month_consistency as get_day_of_month_consistency_adeyinka,
     get_is_always_recurring as get_is_always_recurring_adeyinka,
     get_n_transactions_days_apart as get_n_transactions_days_apart_adeyinka,
     get_outlier_score as get_outlier_score_adeyinka,
+    get_phone_bill_indicator as get_phone_bill_indicator_adeyinka,
+    get_recent_transaction_frequency as get_recent_transaction_frequency_adeyinka,
     get_recurring_confidence_score as get_recurring_confidence_score_adeyinka,
     get_same_amount_vendor_transactions as get_same_amount_vendor_transactions_adeyinka,
     get_subscription_keyword_score as get_subscription_keyword_score_adeyinka,
     get_time_regularity_score as get_time_regularity_score_adeyinka,
     get_transaction_amount_variance as get_transaction_amount_variance_adeyinka,
+    is_bnpl_service as is_bnpl_service_adeyinka,
 )
 from recur_scan.features_asimi import (
     get_amount_category as get_amount_category_asimi,
@@ -1093,6 +1098,13 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "14_days_apart_off_by_1_adeyinka": get_n_transactions_days_apart_adeyinka(transaction, all_transactions, 14, 1),
         "7_days_apart_exact_adeyinka": get_n_transactions_days_apart_adeyinka(transaction, all_transactions, 7, 0),
         "7_days_apart_off_by_1_adeyinka": get_n_transactions_days_apart_adeyinka(transaction, all_transactions, 7, 1),
+        "amount_consistency_score_adeyinka": get_amount_consistency_score_adeyinka(transaction, all_transactions),
+        "day_of_month_consistency_adeyinka": get_day_of_month_consistency_adeyinka(transaction, all_transactions),
+        "bnpl_service_adeyinka": is_bnpl_service_adeyinka(transaction),
+        "recent_transaction_frequency_adeyinka": get_recent_transaction_frequency_adeyinka(
+            transaction, all_transactions
+        ),
+        "phone_bill_indicator_adeyinka": get_phone_bill_indicator_adeyinka(transaction),
         # Elliot's features
         "is_utility_elliot": is_utility_bill_elliot(transaction),
         "is_always_recurring_elliot": get_is_always_recurring_elliot(transaction),
