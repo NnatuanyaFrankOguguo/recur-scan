@@ -200,9 +200,20 @@ from recur_scan.features_dallanq import (
     weekly_tolerance as weekly_tolerance_dallanq,
 )
 from recur_scan.features_ebenezer import (
+    get_amount_consistency as get_amount_consistency_ebenezer,
+    get_amount_range_same_name as get_amount_range_same_name_ebenezer,
+    get_amount_variance as get_amount_variance_ebenezer,
     get_avg_amount_same_day_of_week as get_avg_amount_same_day_of_week_ebenezer,
     get_avg_amount_same_month as get_avg_amount_same_month_ebenezer,
     get_avg_amount_same_name as get_avg_amount_same_name_ebenezer,
+    get_avg_time_between_transactions as get_avg_time_between_transactions_ebenezer,
+    get_day_of_week as get_day_of_week_ebenezer,
+    get_is_monthly as get_is_monthly_ebenezer,
+    get_is_recurring as get_is_recurring_ebenezer,
+    get_is_weekend as get_is_weekend_ebenezer,
+    get_is_weekly as get_is_weekly_ebenezer,
+    get_keyword_match as get_keyword_match_ebenezer,
+    get_median_amount_same_name as get_median_amount_same_name_ebenezer,
     get_n_transactions_same_month as get_n_transactions_same_month_ebenezer,
     get_n_transactions_same_name as get_n_transactions_same_name_ebenezer,
     get_n_transactions_same_user_id as get_n_transactions_same_user_id_ebenezer,
@@ -215,6 +226,8 @@ from recur_scan.features_ebenezer import (
     get_std_amount_same_day_of_week as get_std_amount_same_day_of_week_ebenezer,
     get_std_amount_same_month as get_std_amount_same_month_ebenezer,
     get_std_amount_same_name as get_std_amount_same_name_ebenezer,
+    get_user_avg_transaction_amount as get_user_avg_transaction_amount_ebenezer,
+    get_user_transaction_frequency as get_user_transaction_frequency_ebenezer,
 )
 from recur_scan.features_efehi import (
     get_irregular_periodicity as get_irregular_periodicity_efehi,
@@ -894,6 +907,25 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "percent_transactions_within_amount_range_ebenezer": get_percent_transactions_within_amount_range_ebenezer(
             transaction, all_transactions
         ),
+        "avg_time_between_transactions_ebenezer": float(
+            get_avg_time_between_transactions_ebenezer(transaction, all_transactions)
+        ),
+        "is_recurring_ebenezer": float(get_is_recurring_ebenezer(transaction, all_transactions)),
+        "median_amount_same_name_ebenezer": float(get_median_amount_same_name_ebenezer(transaction, all_transactions)),
+        "amount_range_same_name_ebenezer": float(get_amount_range_same_name_ebenezer(transaction, all_transactions)),
+        "day_of_week_ebenezer": float(get_day_of_week_ebenezer(transaction)),
+        "is_weekend_ebenezer": float(get_is_weekend_ebenezer(transaction)),
+        "user_avg_transaction_amount_ebenezer": float(
+            get_user_avg_transaction_amount_ebenezer(transaction, all_transactions)
+        ),
+        "user_transaction_frequency_ebenezer": float(
+            get_user_transaction_frequency_ebenezer(transaction, all_transactions)
+        ),
+        "amount_variance_ebenezer": float(get_amount_variance_ebenezer(transaction, all_transactions)),
+        "amount_consistency_ebenezer": float(get_amount_consistency_ebenezer(transaction, all_transactions)),
+        "is_monthly_ebenezer": float(get_is_monthly_ebenezer(transaction, all_transactions)),
+        "is_weekly_ebenezer": float(get_is_weekly_ebenezer(transaction, all_transactions)),
+        "keyword_match_ebenezer": float(get_keyword_match_ebenezer(transaction)),
         # Praise's features
         "is_recurring_merchant_praise": is_recurring_merchant_praise(transaction),
         "avg_days_between_same_merchant_amount_praise": get_avg_days_between_same_merchant_amount_praise(
