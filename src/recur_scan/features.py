@@ -266,10 +266,7 @@ from recur_scan.features_emmanuel_eze import (
     get_recurring_transaction_confidence as get_recurring_transaction_confidence_emmanuel_eze,
 )
 from recur_scan.features_emmanuel_ezechukwu1 import (
-    get_amount_cv as get_amount_cv_emmanuel1,
-    get_day_of_month_consistency as get_day_of_month_consistency_emmanuel1,
-    get_days_between_std as get_days_between_std_emmanuel1,
-    get_exact_amount_count as get_exact_amount_count_emmanuel1,
+    get_amount_range_consistency as get_amount_range_consistency_emmanuel1,
     get_has_recurring_keyword as get_has_recurring_keyword_emmanuel1,
     get_is_always_recurring as get_is_always_recurring_emmanuel1,
     get_is_convenience_store as get_is_convenience_store_emmanuel1,
@@ -278,7 +275,9 @@ from recur_scan.features_emmanuel_ezechukwu1 import (
     get_is_utility as get_is_utility_emmanuel1,
     get_n_transactions_days_apart as get_n_transactions_days_apart_emmanuel1,
     get_n_transactions_same_amount as get_n_transactions_same_amount_emmanuel1,
+    get_pct_transactions_days_apart as get_pct_transactions_days_apart_emmanuel1,
     get_percent_transactions_same_amount as get_percent_transactions_same_amount_emmanuel1,
+    get_recurring_period_score as get_recurring_period_score_emmanuel1,
 )
 from recur_scan.features_emmanuel_ezechukwu2 import (
     classify_subscription_tier as classify_subscription_tier_emmanuel2,
@@ -959,10 +958,6 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "percent_transactions_same_amount_emmanuel1": get_percent_transactions_same_amount_emmanuel1(
             transaction, all_transactions
         ),
-        "days_between_std_emmanuel1": get_days_between_std_emmanuel1(transaction, all_transactions),
-        "amount_cv_emmanuel1": get_amount_cv_emmanuel1(transaction, all_transactions),
-        "day_of_month_consistency_emmanuel1": get_day_of_month_consistency_emmanuel1(transaction, all_transactions),
-        "exact_amount_count_emmanuel1": get_exact_amount_count_emmanuel1(transaction, all_transactions),
         "has_recurring_keyword_emmanuel1": get_has_recurring_keyword_emmanuel1(transaction),
         "is_always_recurring_emmanuel1": int(get_is_always_recurring_emmanuel1(transaction)),
         "n_transactions_30_days_apart_emmanuel1": get_n_transactions_days_apart_emmanuel1(
@@ -972,6 +967,14 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "is_insurance_emmanuel1": int(get_is_insurance_emmanuel1(transaction)),
         "is_utility_emmanuel1": int(get_is_utility_emmanuel1(transaction)),
         "is_phone_emmanuel1": int(get_is_phone_emmanuel1(transaction)),
+        "n_transactions_days_apart_30_emmanuel1": get_n_transactions_days_apart_emmanuel1(
+            transaction, all_transactions, 30, 3
+        ),
+        "pct_transactions_days_apart_30_emmanuel1": get_pct_transactions_days_apart_emmanuel1(
+            transaction, all_transactions, 30, 3
+        ),
+        "amount_range_consistency_emmanuel1": get_amount_range_consistency_emmanuel1(transaction, all_transactions),
+        "recurring_period_score_emmanuel1": get_recurring_period_score_emmanuel1(transaction, all_transactions),
         # Asimi's features
         **get_amount_features_asimi(transaction),
         **get_user_recurring_vendor_count_asimi(transaction, all_transactions),
