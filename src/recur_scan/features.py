@@ -507,7 +507,16 @@ from recur_scan.features_tife import (
     get_transaction_frequency as get_transaction_frequency_tife,
 )
 from recur_scan.features_victor import (
+    amount_cluster_count as amount_cluster_count_victor,
+    amount_stability_index as amount_stability_index_victor,
     get_avg_days_between as get_avg_days_between_victor,
+    get_count_same_amount_monthly as get_count_same_amount_monthly_victor,
+    get_days_since_last_same_amount as get_days_since_last_same_amount_victor,
+    interval_variability as interval_variability_victor,
+    is_small_fixed_amount as is_small_fixed_amount_victor,
+    near_interval_ratio as near_interval_ratio_victor,
+    recurring_day_of_month as recurring_day_of_month_victor,
+    sequence_length as sequence_length_victor,
 )
 from recur_scan.features_yoloye import (
     get_delayed_annual as get_delayed_annual_yoloye,
@@ -1231,6 +1240,15 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "average_transaction_interval_segun": get_average_transaction_interval_segun(all_transactions),
         # Victor's features
         "avg_days_between_victor": get_avg_days_between_victor(all_transactions),
+        "interval_variability_victor": interval_variability_victor(all_transactions),
+        "amount_cluster_count_victor": amount_cluster_count_victor(all_transactions, tolerance=0.05),
+        "recurring_day_of_month_victor": recurring_day_of_month_victor(all_transactions),
+        "near_interval_ratio_victor": near_interval_ratio_victor(all_transactions, tolerance=5),
+        "amount_stability_index_victor": amount_stability_index_victor(all_transactions, tolerance=0.1),
+        "sequence_length_victor": sequence_length_victor(all_transactions),
+        "count_same_amount_monthly_victor": get_count_same_amount_monthly_victor(all_transactions, transaction),
+        "is_small_fixed_amount_victor": is_small_fixed_amount_victor(transaction),
+        "days_since_last_same_amount_victor": get_days_since_last_same_amount_victor(all_transactions, transaction),
         # Emmanuel Eze's features
         "is_recurring_emmanuel_eze": get_is_recurring_emmanuel_eze(transaction, all_transactions),
         "recurring_transaction_confidence_emmanuel_eze": get_recurring_transaction_confidence_emmanuel_eze(
