@@ -6,8 +6,6 @@ from scipy.stats import entropy
 from recur_scan.transactions import Transaction
 from recur_scan.utils import parse_date
 
-# Helper Functions
-
 
 def _aggregate_transactions(transactions: list[Transaction]) -> dict[str, dict[str, list[Transaction]]]:
     """Group transactions by user ID and merchant name for efficient feature computation.
