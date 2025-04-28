@@ -449,16 +449,17 @@ from recur_scan.features_praise import (
 )
 from recur_scan.features_precious import (
     amount_ends_in_00 as amount_ends_in_00_precious,
-    get_additional_features,
-    get_amount_variation_features,
+    get_additional_features as get_additional_features_precious,
+    get_amount_variation_features as get_amount_variation_features_precious,
     get_avg_days_between_same_merchant_amount as get_avg_days_between_same_merchant_amount_precious,
     get_days_since_last_same_merchant_amount as get_days_since_last_same_merchant_amount_precious,
     get_n_transactions_same_merchant_amount as get_n_transactions_same_merchant_amount_precious,
+    get_new_features as get_new_features_precious,
     get_percent_transactions_same_merchant_amount as get_percent_transactions_same_merchant_amount_precious,
-    get_recurring_frequency,
+    get_recurring_frequency as get_recurring_frequency_precious,
     get_stddev_days_between_same_merchant_amount as get_stddev_days_between_same_merchant_amount_precious,
     is_recurring_merchant as is_recurring_merchant_precious,
-    is_subscription_amount,
+    is_subscription_amount as is_subscription_amount_precious,
 )
 from recur_scan.features_raphael import (
     get_has_irregular_spike as get_has_irregular_spike_raphael,
@@ -977,10 +978,11 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "days_since_last_same_merchant_amount_precious": get_days_since_last_same_merchant_amount_precious(
             transaction, all_transactions
         ),
-        "recurring_frequency": get_recurring_frequency(transaction, all_transactions),
-        "is_subscription_amount": is_subscription_amount(transaction),
-        **get_additional_features(transaction, all_transactions),
-        **get_amount_variation_features(transaction, all_transactions),
+        "recurring_frequency_precious": get_recurring_frequency_precious(transaction, all_transactions),
+        "is_subscription_amount_precious": is_subscription_amount_precious(transaction),
+        **get_additional_features_precious(transaction, all_transactions),
+        **get_amount_variation_features_precious(transaction, all_transactions),
+        **get_new_features_precious(transaction, all_transactions),
         # Happy's features
         "get_n_transactions_same_description_happy": get_n_transactions_same_description_happy(
             transaction, all_transactions
