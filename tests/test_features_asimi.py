@@ -25,7 +25,7 @@ from recur_scan.features_asimi import (
     get_vendor_transaction_frequency,
     is_valid_recurring_transaction,
 )
-from recur_scan.features_original import get_percent_transactions_same_amount
+from recur_scan.features_dallanq import get_percent_transactions_same_amount
 from recur_scan.transactions import Transaction
 
 # def test_get_day_of_week_features(transactions) -> None:

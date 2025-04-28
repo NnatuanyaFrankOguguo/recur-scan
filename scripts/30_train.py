@@ -32,7 +32,7 @@ from tqdm import tqdm
 from xgboost.callback import EarlyStopping
 
 from recur_scan.features import get_features
-from recur_scan.features_original import get_new_features
+from recur_scan.features_dallanq import get_new_features
 from recur_scan.transactions import (
     group_transactions,
     read_labeled_transactions,

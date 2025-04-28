@@ -26,8 +26,8 @@ from recur_scan.features_laurels import (
     transaction_month_feature,
     transaction_pattern_complexity,
 )
-from recur_scan.features_original import parse_date
 from recur_scan.transactions import Transaction
+from recur_scan.utils import parse_date
 
 
 # Helper Tests

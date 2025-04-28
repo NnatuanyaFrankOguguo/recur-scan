@@ -1,4 +1,4 @@
-from recur_scan.features_original import (
+from recur_scan.features_dallanq import (
     get_ends_in_99,
     get_is_always_recurring,
     get_is_insurance,

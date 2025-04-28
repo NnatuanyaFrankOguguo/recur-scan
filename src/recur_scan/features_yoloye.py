@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from recur_scan.features_original import get_n_transactions_days_apart
+from recur_scan.features_dallanq import get_n_transactions_days_apart
 from recur_scan.transactions import Transaction
 
 

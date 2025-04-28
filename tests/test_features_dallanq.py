@@ -1,9 +1,9 @@
-# test features_original.py
+# test features_dallanq.py
 
 
 import pytest
 
-from recur_scan.features_original import (
+from recur_scan.features_dallanq import (
     amount_diff_from_mean,
     amount_diff_from_modal,
     amount_freq_fraction,
@@ -507,7 +507,7 @@ def test_day_of_month() -> None:
 
 def test_month_of_year() -> None:
     """Test month_of_year function."""
-    from recur_scan.features_original import month_of_year
+    from recur_scan.features_dallanq import month_of_year
 
     transaction = Transaction(id=1, user_id="user1", name="name1", amount=100, date="2024-02-15")
     assert month_of_year(transaction) == 2

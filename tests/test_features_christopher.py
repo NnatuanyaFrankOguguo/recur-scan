@@ -17,8 +17,8 @@ from recur_scan.features_christopher import (
     is_known_recurring_company,
     std_amount_all,
 )
-from recur_scan.features_original import parse_date
 from recur_scan.transactions import Transaction
+from recur_scan.utils import parse_date
 
 
 def test_parse_date_invalid_format() -> None:

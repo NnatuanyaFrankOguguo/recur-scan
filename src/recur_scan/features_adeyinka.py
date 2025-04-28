@@ -1,7 +1,7 @@
 import statistics
 from datetime import datetime
 
-from recur_scan.features_original import get_n_transactions_same_amount
+from recur_scan.features_dallanq import get_n_transactions_same_amount
 from recur_scan.transactions import Transaction
 
 
