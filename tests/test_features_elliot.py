@@ -1,8 +1,12 @@
 import pytest
 
 from recur_scan.features_elliot import (
+    amount_similarity,
+    amount_variability_ratio,
     get_is_always_recurring,
     get_is_near_same_amount,
+    get_time_regularity_score,
+    get_transaction_amount_variance,
     get_transaction_similarity,
     is_auto_pay,
     is_membership,
@@ -11,6 +15,7 @@ from recur_scan.features_elliot import (
     is_split_transaction,
     is_utility_bill,
     is_weekday_transaction,
+    most_common_interval,
 )
 from recur_scan.transactions import Transaction
 
@@ -148,3 +153,156 @@ def test_is_split_transaction():
 
     assert is_split_transaction(all_transactions[0], all_transactions) is True  # Two smaller related transactions
     assert is_split_transaction(all_transactions[3], all_transactions) is False  # No split transactions
+
+
+# NEW FEATURES TESTS
+
+
+def test_get_time_regularity_score():
+    """Test get_time_regularity_score function."""
+    txns = [
+        {"name": "Spotify", "date": "2024-01-01"},
+        {"name": "Spotify", "date": "2024-01-08"},  # 7 days later
+        {"name": "Spotify", "date": "2024-01-15"},  # 7 days later
+        {"name": "Netflix", "date": "2024-01-01"},  # Different vendor
+    ]
+    txn = {"name": "Spotify", "date": "2024-01-01"}
+
+    # Case 1: Regular intervals (7 days)
+    assert get_time_regularity_score(txn, txns) > 0.5
+
+    # Case 2: Very irregular intervals (adjusted expectation)
+    very_irregular_txns = [
+        {"name": "Spotify", "date": "2024-01-01"},
+        {"name": "Spotify", "date": "2024-01-05"},  # 4 days later
+        {"name": "Spotify", "date": "2024-01-30"},  # 25 days later
+        {"name": "Spotify", "date": "2024-02-20"},  # 21 days later
+    ]
+    # The implementation uses 1.0 / (1.0 + stddev / 5.0), so we need larger variance
+    assert get_time_regularity_score(txn, very_irregular_txns) < 0.5
+
+    # Case 3: Not enough transactions
+    small_txns = [{"name": "Spotify", "date": "2024-01-01"}]
+    assert get_time_regularity_score(txn, small_txns) == 0.0
+
+
+def test_get_transaction_amount_variance():
+    """Test get_transaction_amount_variance function."""
+    txns = [
+        {"name": "Spotify", "amount": 9.99},
+        {"name": "Spotify", "amount": 10.99},
+        {"name": "Spotify", "amount": 11.99},
+        {"name": "Netflix", "amount": 15.99},  # Different vendor
+    ]
+    txn = {"name": "Spotify", "amount": 9.99}
+
+    # Case 1: Variance exists
+    assert get_transaction_amount_variance(txn, txns) > 0.0
+
+    # Case 2: No variance (all amounts are the same)
+    uniform_txns = [
+        {"name": "Spotify", "amount": 9.99},
+        {"name": "Spotify", "amount": 9.99},
+        {"name": "Spotify", "amount": 9.99},
+    ]
+    assert get_transaction_amount_variance(txn, uniform_txns) == 0.0
+
+    # Case 3: Not enough transactions
+    small_txns = [{"name": "Spotify", "amount": 9.99}]
+    assert get_transaction_amount_variance(txn, small_txns) == 0.0
+
+
+def test_most_common_interval():
+    """Test most_common_interval function."""
+    # Case 1: Regular intervals
+    transactions = [
+        Transaction(id=1, user_id="user1", name="Spotify", amount=9.99, date="2024-01-01"),
+        Transaction(id=2, user_id="user1", name="Spotify", amount=9.99, date="2024-01-08"),
+        Transaction(id=3, user_id="user1", name="Spotify", amount=9.99, date="2024-01-15"),
+        Transaction(id=4, user_id="user1", name="Spotify", amount=9.99, date="2024-01-22"),
+    ]
+    # Since the most common interval is 7 days
+    interval = most_common_interval(transactions)
+    assert interval == 7 or interval == 7.0  # Accept either int or float
+
+    # Case 2: Irregular intervals but with a common difference of 9 days
+    transactions_irregular = [
+        Transaction(id=1, user_id="user1", name="Spotify", amount=9.99, date="2024-01-01"),
+        Transaction(id=2, user_id="user1", name="Spotify", amount=9.99, date="2024-01-10"),
+        Transaction(id=3, user_id="user1", name="Spotify", amount=9.99, date="2024-01-19"),
+    ]
+    interval = most_common_interval(transactions_irregular)
+    assert interval == 9 or interval == 9.0  # Accept either int or float
+
+    # Case 3: Single transaction
+    transactions_single = [
+        Transaction(id=1, user_id="user1", name="Spotify", amount=9.99, date="2024-01-01"),
+    ]
+    assert most_common_interval(transactions_single) == 0
+
+
+def test_amount_variability_ratio():
+    """Test amount_variability_ratio function."""
+    # Case 1: Variability exists
+    transactions = [
+        Transaction(id=1, user_id="user1", name="Vendor", amount=9.99, date="2024-01-01"),
+        Transaction(id=2, user_id="user1", name="Vendor", amount=10.99, date="2024-01-08"),
+        Transaction(id=3, user_id="user1", name="Vendor", amount=11.99, date="2024-01-15"),
+        Transaction(id=4, user_id="user1", name="Vendor", amount=12.99, date="2024-01-22"),
+    ]
+    assert amount_variability_ratio(transactions) > 0.0
+
+    # Case 2: No variability (all amounts are the same)
+    uniform_transactions = [
+        Transaction(id=1, user_id="user1", name="Vendor", amount=9.99, date="2024-01-01"),
+        Transaction(id=2, user_id="user1", name="Vendor", amount=9.99, date="2024-01-08"),
+        Transaction(id=3, user_id="user1", name="Vendor", amount=9.99, date="2024-01-15"),
+    ]
+    assert amount_variability_ratio(uniform_transactions) == 0.0
+
+    # Case 3: Empty list
+    empty_transactions = []
+    assert amount_variability_ratio(empty_transactions) == 0.0
+
+
+def test_amount_similarity():
+    """Test amount_similarity function."""
+    # Case 1: High similarity - transactions with similar amounts
+    similar_transactions = [
+        Transaction(id=1, user_id="user1", name="Vendor", amount=9.99, date="2024-01-01"),
+        Transaction(id=2, user_id="user1", name="Vendor", amount=10.00, date="2024-01-08"),
+        Transaction(id=3, user_id="user1", name="Vendor", amount=10.01, date="2024-01-15"),
+        Transaction(id=4, user_id="user1", name="Vendor", amount=10.02, date="2024-01-22"),
+    ]
+    # The function now takes a list of transactions and an optional tolerance
+    assert amount_similarity(similar_transactions, 0.1) > 0.75
+
+    # Case 2: Low similarity - transactions with very different amounts
+    dissimilar_transactions = [
+        Transaction(id=1, user_id="user1", name="Vendor", amount=9.99, date="2024-01-01"),
+        Transaction(id=2, user_id="user1", name="Vendor", amount=20.00, date="2024-01-08"),
+        Transaction(id=3, user_id="user1", name="Vendor", amount=30.00, date="2024-01-15"),
+        Transaction(id=4, user_id="user1", name="Vendor", amount=40.00, date="2024-01-22"),
+    ]
+    assert amount_similarity(dissimilar_transactions, 0.1) < 0.5
+
+    # Case 3: Empty transaction list
+    empty_transactions = []
+    assert amount_similarity(empty_transactions) == 0.0
+
+
+def test_parse_date():
+    """Test parse_date function - using imported parse_date from features_elliot."""
+    from datetime import datetime
+
+    from recur_scan.features_elliot import parse_date
+
+    # Valid date strings
+    assert parse_date("2024-01-01") == datetime(2024, 1, 1)
+    assert parse_date("01/01/2024") == datetime(2024, 1, 1)
+    assert parse_date("January 1, 2024") == datetime(2024, 1, 1)
+
+    # Invalid date strings
+    assert parse_date("invalid-date") is None
+    assert parse_date("") is None
+    # Note: The parse_date in features_elliot can handle None by catching TypeError

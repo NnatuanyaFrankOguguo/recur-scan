@@ -214,8 +214,12 @@ from recur_scan.features_efehi import (
     get_vendor_recurring_ratio as get_vendor_recurring_ratio_efehi,
 )
 from recur_scan.features_elliot import (
+    amount_similarity as amount_similarity_elliot,
+    amount_variability_ratio as amount_variability_ratio_elliot,
     get_is_always_recurring as get_is_always_recurring_elliot,
     get_is_near_same_amount as get_is_near_same_amount_elliot,
+    get_time_regularity_score as get_time_regularity_score_elliot,
+    get_transaction_amount_variance as get_transaction_amount_variance_elliot,
     get_transaction_similarity as get_transaction_similarity_elliot,
     is_auto_pay as is_auto_pay_elliot,
     is_membership as is_membership_elliot,
@@ -224,6 +228,7 @@ from recur_scan.features_elliot import (
     is_split_transaction as is_split_transaction_elliot,
     is_utility_bill as is_utility_bill_elliot,
     is_weekday_transaction as is_weekday_transaction_elliot,
+    most_common_interval,
 )
 from recur_scan.features_emmanuel_eze import (
     detect_sequence_patterns as detect_sequence_patterns_emmanuel_eze,
@@ -988,6 +993,17 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "is_split_transaction_elliot": is_split_transaction_elliot(transaction, all_transactions),
         "is_price_trending_5pct_elliot": is_price_trending_elliot(transaction, all_transactions, 5),
         "is_price_trending_10pct_elliot": is_price_trending_elliot(transaction, all_transactions, 10),
+        "time_regularity_score_elliot": get_time_regularity_score_elliot(
+            {"name": transaction.name, "date": transaction.date, "amount": transaction.amount},
+            [{"name": t.name, "date": t.date, "amount": t.amount} for t in all_transactions],
+        ),
+        "transaction_amount_variance_elliot": get_transaction_amount_variance_elliot(
+            {"name": transaction.name, "date": transaction.date, "amount": transaction.amount},
+            [{"name": t.name, "date": t.date, "amount": t.amount} for t in all_transactions],
+        ),
+        "amount_variability_ratio_elliot": amount_variability_ratio_elliot(all_transactions),
+        "most_common_interval_elliot": most_common_interval(all_transactions),
+        "amount_similarity_elliot": amount_similarity_elliot(all_transactions),
         # Freedom's features
         "day_of_week_freedom": get_day_of_week_freedom(transaction),
         "days_until_next_transaction_freedom": get_days_until_next_transaction_freedom(transaction, all_transactions),
