@@ -393,14 +393,20 @@ from recur_scan.features_laurels import (
     transaction_pattern_complexity as transaction_pattern_complexity_laurels,
 )
 from recur_scan.features_naomi import (
+    days_since_last as days_since_last_naomi,
+    get_amount_change_trend as get_amount_change_trend_naomi,
+    get_avg_amount_same_name as get_avg_amount_same_name_naomi,
     get_cluster_label as get_cluster_label_naomi,
+    get_empower_twice_monthly_count as get_empower_twice_monthly_count_naomi,
     get_is_monthly_recurring as get_is_monthly_recurring_naomi,
     get_is_similar_amount as get_is_similar_amount_naomi,
+    get_merchant_recurrence_score as get_merchant_recurrence_score_naomi,
     get_outlier_score as get_outlier_score_naomi,
     get_recurring_confidence_score as get_recurring_confidence_score_naomi,
     get_subscription_keyword_score as get_subscription_keyword_score_naomi,
     get_time_regularity_score as get_time_regularity_score_naomi,
     get_transaction_interval_consistency as get_transaction_interval_consistency_naomi,
+    get_txns_last_30_days as get_txns_last_30_days_naomi,
 )
 from recur_scan.features_nnanna import (
     get_average_transaction_amount as get_average_transaction_amount_nnanna,
@@ -1269,6 +1275,12 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "recurring_confidence_score_naomi": get_recurring_confidence_score_naomi(transaction, all_transactions),
         "time_regularity_score_naomi": get_time_regularity_score_naomi(transaction, all_transactions),
         "outlier_score_naomi": get_outlier_score_naomi(transaction, all_transactions),
+        "days_since_last_naomi": days_since_last_naomi(transaction, all_transactions),
+        "amount_change_trend_naomi": get_amount_change_trend_naomi(all_transactions),
+        "txns_last_30_days_naomi": get_txns_last_30_days_naomi(transaction, all_transactions),
+        "avg_amount_same_name_naomi": get_avg_amount_same_name_naomi(transaction, all_transactions),
+        "empower_twice_monthly_count_naomi": get_empower_twice_monthly_count_naomi(all_transactions),
+        "merchant_recurrence_score_naomi": get_merchant_recurrence_score_naomi(transaction, all_transactions),
         # Yoloye's features
         "delayed_weekly_yoloye": get_delayed_weekly_yoloye(transaction, all_transactions),
         "delayed_fortnightly_yoloye": get_delayed_fortnightly_yoloye(transaction, all_transactions),
