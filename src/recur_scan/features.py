@@ -276,10 +276,12 @@ from recur_scan.features_emmanuel_ezechukwu2 import (
     validate_recurring_transaction as validate_recurring_transaction_emmanuel2,
 )
 from recur_scan.features_ernest import (
+    get_amount_consistency_score as get_amount_consistency_score_ernest,
     get_average_transaction_amount as get_average_transaction_amount_ernest,
     get_is_biweekly as get_is_biweekly_ernest,
     get_is_fixed_amount as get_is_fixed_amount_ernest,
     get_is_high_frequency_vendor as get_is_high_frequency_vendor_ernest,
+    get_is_known_recurring as get_is_known_recurring_ernest,
     get_is_monthly as get_is_monthly_ernest,
     get_is_quarterly as get_is_quarterly_ernest,
     get_is_recurring_vendor as get_is_recurring_vendor_ernest,
@@ -289,6 +291,7 @@ from recur_scan.features_ernest import (
     get_is_subscription_based as get_is_subscription_based_ernest,
     get_is_weekend_transaction as get_is_weekend_transaction_ernest,
     get_is_weekly as get_is_weekly_ernest,
+    get_median_days_between as get_median_days_between_ernest,
     get_recurring_interval_score as get_recurring_interval_score_ernest,
     get_transaction_frequency as get_transaction_frequency_ernest,
     get_transaction_gap_stats as get_transaction_gap_stats_ernest,
@@ -1147,6 +1150,9 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "is_quarterly_ernest": get_is_quarterly_ernest(transaction, all_transactions),
         "average_transaction_amount_ernest": get_average_transaction_amount_ernest(transaction, all_transactions),
         "is_subscription_based_ernest": get_is_subscription_based_ernest(transaction),
+        "amount_consistency_score_ernest": get_amount_consistency_score_ernest(transaction, all_transactions),
+        "median_days_between_ernest": get_median_days_between_ernest(transaction, all_transactions),
+        "is_known_recurring_ernest": get_is_known_recurring_ernest(transaction),
         # Efehi's features
         "transaction_time_of_month_efehi": get_transaction_time_of_month_efehi(transaction),
         "transaction_amount_stability_efehi": get_transaction_amount_stability_efehi(transaction, all_transactions),
