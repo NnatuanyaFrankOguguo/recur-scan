@@ -411,6 +411,8 @@ from recur_scan.features_nnanna import (
     get_time_interval_between_transactions as get_time_interval_between_transactions_nnanna,
     get_transaction_frequency as get_transaction_frequency_nnanna,
     get_transaction_interval_consistency as get_transaction_interval_consistency_nnanna,
+    is_consistent_transaction_amount as is_consistent_transaction_amount_nnanna,
+    is_monthly_apple_storage as is_monthly_apple_storage_nnanna,
 )
 from recur_scan.features_osasere import (
     get_day_of_month_consistency as get_day_of_month_consistency_osasere,
@@ -820,6 +822,16 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
             transaction, all_transactions
         ),
         "average_transaction_amount_nnanna": get_average_transaction_amount_nnanna(transaction, all_transactions),
+        # too specific to one vendor
+        # "u_dot_express_lane_nnanna": float(
+        #     bool(re.match(r"(?i)^U-dot-express Lane$", transaction.name)) and transaction.amount != 2.50
+        # ),
+        "monthly_apple_storage_nnanna": float(is_monthly_apple_storage_nnanna(transaction, all_transactions)),
+        # too specific to one vendor
+        # "cobblestone_recurrence_score_nnanna": get_cobblestone_recurrence_score(transaction, all_transactions),
+        "consistent_transaction_amount_nnanna": float(
+            is_consistent_transaction_amount_nnanna(transaction, all_transactions)
+        ),
         # Ebenezer's features
         "n_transactions_same_name_ebenezer": get_n_transactions_same_name_ebenezer(transaction, all_transactions),
         "percent_transactions_same_name_ebenezer": get_percent_transactions_same_name_ebenezer(
