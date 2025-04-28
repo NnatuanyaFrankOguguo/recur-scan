@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# mypy: disable-error-code="no-any-unimported"
 """
 Train a model to identify recurring transactions.
 
@@ -12,9 +13,12 @@ import argparse
 import json
 import os
 from collections import defaultdict
+from typing import Any
 
 import joblib
 import matplotlib.pyplot as plt
+import numpy as np
+import optuna
 import pandas as pd
 import shap
 import xgboost as xgb
@@ -22,9 +26,10 @@ from loguru import logger
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.feature_selection import RFECV
-from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score
-from sklearn.model_selection import GridSearchCV, GroupKFold, RandomizedSearchCV, train_test_split
+from sklearn.metrics import confusion_matrix, f1_score, make_scorer, precision_score, recall_score
+from sklearn.model_selection import GridSearchCV, GroupKFold, GroupShuffleSplit, RandomizedSearchCV
 from tqdm import tqdm
+from xgboost.callback import EarlyStopping
 
 from recur_scan.features import get_features
 from recur_scan.features_original import get_new_features
@@ -42,13 +47,14 @@ use_precomputed_features = True
 model_type = "xgb"  # "rf" or "xgb"
 n_cv_folds = 5  # number of cross-validation folds, could be 5
 do_hyperparameter_optimization = False  # set to False to use the default hyperparameters
-search_type = "random"  # "grid" or "random"
-n_hpo_iters = 200  # number of hyperparameter optimization iterations
+search_type = "bayesian"  # "grid", "random", or "bayesian"
+n_hpo_iters = 100  # number of hyperparameter optimization iterations
 n_jobs = -1  # number of jobs to run in parallel (set to 1 if your laptop gets too hot)
+recall_weight = 1.5  # weight for recall in custom scorer (higher values favor recall over precision)
 
-in_path = "../../data/train.csv"
-precomputed_features_path = "../../data/train_features.csv"
-out_dir = "../../data/training_out"
+in_path = "training file"
+precomputed_features_path = "precomputed features file"
+out_dir = "output directory"
 
 # %%
 # parse script arguments from command line
@@ -68,14 +74,115 @@ parser.add_argument(
     help="Path to the precomputed features CSV file.",
 )
 parser.add_argument("--output", type=str, default=out_dir, help="Path to the output directory.")
+parser.add_argument(
+    "--model_type",
+    type=str,
+    default=model_type,
+    choices=["rf", "xgb"],
+    help="Model type: 'rf' for Random Forest, 'xgb' for XGBoost.",
+)
+parser.add_argument(
+    "--search_type",
+    type=str,
+    default=search_type,
+    choices=["grid", "random", "bayesian"],
+    help="Hyperparameter search type: 'grid' for GridSearchCV, 'random' for RandomizedSearchCV, 'bayesian' for Optuna.",
+)
+parser.add_argument(
+    "--recall_weight",
+    type=float,
+    default=recall_weight,
+    help="Weight for recall in the custom scorer (higher values favor recall over precision).",
+)
+parser.add_argument(
+    "--n_hpo_iters",
+    type=int,
+    default=n_hpo_iters,
+    help="Number of hyperparameter optimization iterations.",
+)
+parser.add_argument(
+    "--n_jobs",
+    type=int,
+    default=n_jobs,
+    help="Number of jobs to run in parallel (-1 for all available cores).",
+)
 args = parser.parse_args()
 in_path = args.input
 use_precomputed_features = args.use_precomputed_features
 precomputed_features_path = args.precomputed_features
 out_dir = args.output
+model_type = args.model_type
+search_type = args.search_type
+recall_weight = args.recall_weight
+n_hpo_iters = args.n_hpo_iters
+n_jobs = args.n_jobs
 
 # Create output directory if it doesn't exist
 os.makedirs(out_dir, exist_ok=True)
+
+# %%
+# define some functions
+
+
+# Define custom scorer that weights recall more than precision
+def weighted_precision_recall_score(y_true: np.ndarray | list, y_pred: np.ndarray | list) -> float:
+    """
+    Custom scoring function that weights recall more than precision.
+
+    Args:
+        y_true: True labels (can be ndarray or list)
+        y_pred: Predicted labels (can be ndarray or list)
+
+    Returns:
+        Weighted average of precision and recall
+    """
+    # Convert to numpy arrays if they're lists
+    if isinstance(y_true, list):
+        y_true = np.array(y_true)
+    if isinstance(y_pred, list):
+        y_pred = np.array(y_pred)
+
+    recall = recall_score(y_true, y_pred)
+    precision = precision_score(y_true, y_pred)
+    # Calculate weighted average favoring recall
+    return float((recall_weight * recall + precision) / (recall_weight + 1))
+
+
+# Custom XGBoost evaluation metric for scikit-learn API
+def weighted_sklearn_metric(y_true: np.ndarray, y_pred_proba: np.ndarray) -> float:
+    """
+    Custom evaluation metric for XGBoost that weights recall more than precision (for scikit-learn API).
+
+    Args:
+        y_true: True labels
+        y_pred_proba: Predicted probabilities for the positive class
+
+    Returns:
+        Weighted score (higher is better)
+    """
+    # For binary classification problems, XGBoost passes probability of positive class
+    if len(y_pred_proba.shape) > 1 and y_pred_proba.shape[1] > 1:
+        # Multi-class case, take the highest probability
+        y_binary = np.argmax(y_pred_proba, axis=1)
+    else:
+        # Binary case
+        y_binary = (y_pred_proba > 0.5).astype(int)
+
+    # Handle edge cases with all predictions of one class
+    if len(np.unique(y_binary)) == 1:
+        if y_binary[0] == 1:  # All positives
+            precision_value = np.mean(y_true)  # TP / (TP + FP)
+            recall_value = 1.0  # TP / (TP + FN)
+        else:  # All negatives
+            precision_value = 0.0
+            recall_value = 0.0
+    else:
+        precision_value = precision_score(y_true, y_binary)
+        recall_value = recall_score(y_true, y_binary)
+
+    # Calculate weighted score (higher is better)
+    return float((recall_weight * recall_value + precision_value) / (recall_weight + 1))
+
 
 # %%
 #
@@ -103,7 +210,7 @@ logger.info("Getting features")
 if use_precomputed_features:
     # read the precomputed features
     features = pd.read_csv(precomputed_features_path).to_dict(orient="records")
-    logger.info(f"Read {len(features)} precomputed features")
+    logger.info(f"Read {len(features)} precomputed features: {len(features[0])} features per transaction")
 else:
     # feature generation is parallelized using joblib
     # Use backend that works better with shared memory
@@ -122,6 +229,8 @@ new_features = [
     get_new_features(transaction, grouped_transactions[(transaction.user_id, transaction.name)])
     for transaction in tqdm(transactions, desc="Processing transactions")
 ]
+
+# %%
 # add the new features to the existing features
 for i, new_transaction_features in enumerate(new_features):
     features[i].update(new_transaction_features)  # type: ignore
@@ -150,46 +259,167 @@ print(X_hpo.shape)
 # %%
 
 if do_hyperparameter_optimization:
-    # Define parameter grid
-    if model_type == "rf":
-        param_dist = {
-            "n_estimators": [200, 300, 400, 500],  # [10, 20, 50, 100, 200, 500, 1000],
-            "max_depth": [20, 30, 40, 50],  # [10, 20, 30, 40, 50, None],
-            "min_samples_split": [5],  # [2, 5, 10],
-            "min_samples_leaf": [8],  # [1, 2, 4, 8, 16],
-            "max_features": ["sqrt"],
-            "bootstrap": [False],
-        }
-    elif model_type == "xgb":
-        param_dist = {
-            "scale_pos_weight": [24, 26, 28],  # Adjust based on class imbalance
-            "max_depth": [5, 6, 7, 8, 9, 10],
-            "learning_rate": [0.01, 0.025, 0.05, 0.1],
-            "n_estimators": [600, 700, 800, 900, 1000],
-            "min_child_weight": [1, 3, 5],
-        }
-    # search for the best hyperparameters
-    if model_type == "rf":
-        model = RandomForestClassifier(random_state=42, n_jobs=n_jobs)
-    elif model_type == "xgb":
-        model = xgb.XGBClassifier(random_state=42, n_jobs=n_jobs)
+    # Create custom scorer
+    custom_scorer = make_scorer(weighted_precision_recall_score)
 
-    cv = GroupKFold(n_splits=n_cv_folds)
-    if search_type == "grid":
-        search = GridSearchCV(model, param_dist, cv=cv, scoring="f1", n_jobs=n_jobs, verbose=3)
-    else:
-        search = RandomizedSearchCV(
-            model, param_dist, n_iter=n_hpo_iters, cv=cv, scoring="f1", n_jobs=n_jobs, verbose=3
-        )
-    print(f"Searching for best hyperparameters for {model_type} with {search_type} search")
-    search.fit(X_hpo, y, groups=user_ids)
-    logger.info(f"Best F1 score: {search.best_score_}")
+    # Define Optuna optimization function
+    def objective(trial: optuna.Trial) -> float:  # type: ignore[misc]
+        """
+        Objective function for Optuna hyperparameter optimization.
 
-    print("Best Hyperparameters:")
-    for param, value in search.best_params_.items():
-        print(f"  {param}: {value}")
+        Args:
+            trial: Optuna trial object
 
-    best_params = search.best_params_
+        Returns:
+            Average score across cross-validation folds
+        """
+        # Set up parameters based on model type
+        if model_type == "rf":
+            params: dict[str, Any] = {
+                "n_estimators": trial.suggest_int("n_estimators", 300, 1000, step=100),
+                "max_depth": trial.suggest_int("max_depth", 10, 50),
+                "min_samples_split": trial.suggest_int("min_samples_split", 2, 10),
+                "min_samples_leaf": trial.suggest_int("min_samples_leaf", 1, 10),
+                "max_features": trial.suggest_categorical("max_features", ["sqrt", "log2"]),
+                "bootstrap": trial.suggest_categorical("bootstrap", [True, False]),
+            }
+            # Create model
+            model = RandomForestClassifier(random_state=42, n_jobs=n_jobs, **params)
+
+        elif model_type == "xgb":
+            params = {
+                "scale_pos_weight": trial.suggest_float("scale_pos_weight", 25, 45),
+                "max_depth": trial.suggest_int("max_depth", 4, 10),  # Shallower trees
+                "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.2, log=True),  # Slower learning
+                "n_estimators": trial.suggest_int("n_estimators", 500, 2000, step=100),
+                "min_child_weight": trial.suggest_int("min_child_weight", 1, 10),  # Higher to avoid noise
+                "reg_alpha": trial.suggest_float("reg_alpha", 0.2, 10.0, log=True),  # Stronger L1 regularization
+                "reg_lambda": trial.suggest_float("reg_lambda", 0.2, 10.0, log=True),  # Stronger L2 regularization
+                "subsample": trial.suggest_float("subsample", 0.2, 1.0),  # Stronger subsampling
+                "colsample_bytree": trial.suggest_float("colsample_bytree", 0.2, 1.0),  # Use fewer features per tree
+                "colsample_bylevel": trial.suggest_float("colsample_bylevel", 0.2, 1.0),  # Use fewer features per level
+                "gamma": trial.suggest_float("gamma", 0.1, 10.0, log=True),  # Higher min split gain
+            }
+
+        # Perform cross-validation
+        cv = GroupKFold(n_splits=n_cv_folds)
+        scores = []
+
+        for train_idx, test_idx in cv.split(X_hpo, y, groups=user_ids):
+            X_train, X_test = X_hpo[train_idx], X_hpo[test_idx]
+            y_train = np.array([y[i] for i in train_idx])
+            y_test = np.array([y[i] for i in test_idx])
+
+            if model_type == "xgb":
+                # For XGBoost, create validation set for early stopping
+                gss = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+                train_idx2, val_idx = next(gss.split(X_train, y_train, groups=[user_ids[i] for i in train_idx]))
+                X_train_final, X_val = X_train[train_idx2], X_train[val_idx]
+                y_train_final = np.array([y_train[i] for i in train_idx2])
+                y_val = np.array([y_train[i] for i in val_idx])
+
+                # Create early stopping callback explicitly set to maximize our metric
+                early_stopping = EarlyStopping(
+                    rounds=50,
+                    min_delta=0.001,
+                    save_best=True,
+                    maximize=True,  # Important: we want to maximize our weighted metric
+                    data_name="validation_0",
+                )
+
+                # Create and train model with early stopping
+                model = xgb.XGBClassifier(
+                    random_state=42,
+                    n_jobs=n_jobs,
+                    eval_metric=weighted_sklearn_metric,  # Use our custom sklearn-compatible metric
+                    callbacks=[early_stopping],  # Use callback instead of early_stopping_rounds
+                    **params,
+                )
+                model.fit(
+                    X_train_final,
+                    y_train_final,
+                    eval_set=[(X_val, y_val)],
+                    verbose=False,
+                )
+            else:
+                # For RF, just train on full training set
+                model = RandomForestClassifier(random_state=42, n_jobs=n_jobs, **params)
+                model.fit(X_train, y_train)
+
+            # Make predictions and calculate custom score
+            y_pred = model.predict(X_test)
+            score = weighted_precision_recall_score(y_test, y_pred)
+            scores.append(score)
+
+        # Return mean score across folds
+        return float(np.mean(scores))
+
+    # Set up Optuna study
+    if search_type == "bayesian":
+        logger.info(f"Starting Bayesian optimization with Optuna for {model_type} model")
+        study = optuna.create_study(direction="maximize")
+        study.optimize(objective, n_trials=n_hpo_iters, show_progress_bar=True)
+
+        # Get best parameters
+        best_params = study.best_params
+        best_score = study.best_value
+        logger.info(f"Best weighted score: {best_score:.4f}")
+
+        print("Best Hyperparameters:")
+        for param, value in best_params.items():
+            print(f"  {param}: {value}")
+
+    elif search_type == "grid" or search_type == "random":
+        # Define parameter grid for traditional sklearn optimizers
+        if model_type == "rf":
+            param_dist = {
+                "n_estimators": [300, 400, 500, 600, 700, 800],
+                "max_depth": [20, 30, 40, 50],
+                "min_samples_split": [2, 5, 10],
+                "min_samples_leaf": [1, 4, 8],
+                "max_features": ["sqrt", "log2"],
+                "bootstrap": [True, False],
+            }
+        elif model_type == "xgb":
+            param_dist = {
+                "scale_pos_weight": [25, 30, 35, 40],
+                "max_depth": [3, 4, 5, 6, 7],
+                "learning_rate": [0.01, 0.025, 0.05, 0.1],
+                "n_estimators": [800, 1000, 1200, 1500],
+                "min_child_weight": [1, 2, 3],
+                "reg_alpha": [0, 0.5, 1.0],
+                "reg_lambda": [0.1, 1.0, 5.0],
+                "subsample": [0.7, 0.8, 0.9, 1.0],
+                "colsample_bytree": [0.6, 0.7, 0.8, 0.9],
+                "gamma": [0, 0.1, 0.2, 0.5],
+            }
+
+        # Set up model
+        if model_type == "rf":
+            model = RandomForestClassifier(random_state=42, n_jobs=n_jobs)
+        elif model_type == "xgb":
+            model = xgb.XGBClassifier(random_state=42, n_jobs=n_jobs, early_stopping_rounds=50)
+
+        # Set up cross-validation
+        cv = GroupKFold(n_splits=n_cv_folds)
+
+        # Set up the search
+        if search_type == "grid":
+            search = GridSearchCV(model, param_dist, cv=cv, scoring=custom_scorer, n_jobs=n_jobs, verbose=3)
+        else:  # random search
+            search = RandomizedSearchCV(
+                model, param_dist, n_iter=n_hpo_iters, cv=cv, scoring=custom_scorer, n_jobs=n_jobs, verbose=3
+            )
+
+        logger.info(f"Searching for best hyperparameters for {model_type} with {search_type} search")
+        search.fit(X_hpo, y, groups=user_ids)
+        logger.info(f"Best weighted score: {search.best_score_}")
+
+        print("Best Hyperparameters:")
+        for param, value in search.best_params_.items():
+            print(f"  {param}: {value}")
+
+        best_params = search.best_params_
 else:
     # default hyperparameters
     if model_type == "rf":
@@ -203,11 +433,17 @@ else:
         }
     elif model_type == "xgb":
         best_params = {
-            "scale_pos_weight": 24,
-            "max_depth": 8,
-            "learning_rate": 0.1,
-            "n_estimators": 600,
-            "min_child_weight": 1,
+            "scale_pos_weight": 31.534975833187737,
+            "max_depth": 7,
+            "learning_rate": 0.10137917778203236,
+            "n_estimators": 231,
+            "min_child_weight": 4,
+            "reg_alpha": 0.7073284135654898,
+            "reg_lambda": 1.1203139343923778,
+            "subsample": 0.8565755247802751,
+            "colsample_bytree": 0.7187157831629986,
+            "colsample_bylevel": 0.8124505380843993,
+            "gamma": 0.5636326211235265,
         }
 
 # %%
@@ -220,9 +456,48 @@ else:
 logger.info(f"Training the {model_type} model with {best_params}")
 if model_type == "rf":
     model = RandomForestClassifier(random_state=42, **best_params, n_jobs=n_jobs)
+    model.fit(X, y)
 elif model_type == "xgb":
-    model = xgb.XGBClassifier(random_state=42, **best_params, n_jobs=n_jobs)
-model.fit(X, y)
+    # For the final XGBoost model, use early stopping with a validation set
+    # Create a validation set using GroupShuffleSplit to respect user_id boundaries
+    gss = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+    train_idx, val_idx = next(gss.split(X, y, groups=user_ids))
+    X_train_final, X_val = X[train_idx], X[val_idx]
+    y_train_final = np.array([y[i] for i in train_idx])
+    y_val = np.array([y[i] for i in val_idx])
+
+    # Create early stopping callback explicitly set to maximize our metric
+    early_stopping = EarlyStopping(
+        rounds=50,
+        min_delta=0.001,
+        save_best=True,
+        maximize=True,  # Important: we want to maximize our weighted metric
+        data_name="validation_0",
+    )
+
+    # Create XGBoost model with early stopping
+    model = xgb.XGBClassifier(
+        random_state=42,
+        eval_metric=weighted_sklearn_metric,  # Use our custom sklearn-compatible metric
+        callbacks=[early_stopping],  # Use callback instead of early_stopping_rounds
+        **best_params,
+        n_jobs=n_jobs,
+    )
+
+    # Train with early stopping using validation set
+    model.fit(X_train_final, y_train_final, eval_set=[(X_val, y_val)], verbose=True)
+
+    logger.info(f"Best iteration: {model.best_iteration}")
+    logger.info(f"Best score: {model.best_score}")
+
+    # Now retrain on full dataset using the best number of iterations found
+    if hasattr(model, "best_iteration"):
+        # Retrain on full dataset with the optimal number of boosting rounds
+        best_params["n_estimators"] = model.best_iteration
+        model = xgb.XGBClassifier(random_state=42, **best_params, n_jobs=n_jobs)
+        model.fit(X, y)
+        logger.info(f"Retrained model with {model.n_estimators} estimators")
+
 logger.info("Model trained")
 
 # %%
@@ -261,15 +536,17 @@ y_pred = model.predict(X)
 # EVALUATE THE PREDICTIONS
 #
 
-# calculate the precision, recall, and f1 score for the positive class
+# calculate the precision, recall, f1 score, and weighted score for the positive class
 
 precision = precision_score(y, y_pred)
 recall = recall_score(y, y_pred)
 f1 = f1_score(y, y_pred)
+weighted_score = weighted_precision_recall_score(y, y_pred)
 
-print(f"Precision: {precision}")
-print(f"Recall: {recall}")
-print(f"F1 Score: {f1}")
+print(f"Precision: {precision:.3f}")
+print(f"Recall: {recall:.3f}")
+print(f"F1 Score: {f1:.3f}")
+print(f"Weighted Score (recall x{recall_weight}): {weighted_score:.3f}")
 print("Confusion Matrix:")
 
 print("                Predicted Non-Recurring  Predicted Recurring")
@@ -311,23 +588,30 @@ false_negatives = set()
 precisions = []
 recalls = []
 f1s = []
+weighted_scores = []
 
 logger.info(f"Starting cross-validation with {n_cv_folds} folds and {best_params}")
 for fold, (train_idx, val_idx) in enumerate(cv.split(X_cv, y, groups=user_ids)):
     logger.info(f"Fold {fold + 1} of {n_cv_folds}")
     # Get training and validation data
-    X_train = [X_cv[i] for i in train_idx]  # type: ignore
-    X_val = [X_cv[i] for i in val_idx]  # type: ignore
-    y_train = [y[i] for i in train_idx]  # type: ignore
-    y_val = [y[i] for i in val_idx]  # type: ignore
+    X_train, X_val = X_cv[train_idx], X_cv[val_idx]
+    y_train, y_val = np.array(y)[train_idx], np.array(y)[val_idx]
     transactions_val = [transactions[i] for i in val_idx]  # Keep the original transaction instances for this fold
 
     # Train the model
     if model_type == "rf":
         model = RandomForestClassifier(random_state=42, **best_params, n_jobs=n_jobs)
+        model.fit(X_train, y_train)
+
     elif model_type == "xgb":
-        model = xgb.XGBClassifier(random_state=42, **best_params, n_jobs=n_jobs)
-    model.fit(X_train, y_train)
+        # No need for early stopping during cross-validation evaluation
+        # We've already determined the optimal n_estimators in the model training phase
+        model = xgb.XGBClassifier(
+            random_state=42,
+            n_jobs=n_jobs,
+            **best_params,  # This already contains the optimized n_estimators
+        )
+        model.fit(X_train, y_train)
 
     # Make predictions
     y_pred = model.predict(X_val)
@@ -340,14 +624,21 @@ for fold, (train_idx, val_idx) in enumerate(cv.split(X_cv, y, groups=user_ids)):
     false_positives.update([transactions_val[i] for i in range(len(y_val)) if y_val[i] != y_pred[i] and y_val[i] == 0])
     false_negatives.update([transactions_val[i] for i in range(len(y_val)) if y_val[i] != y_pred[i] and y_val[i] == 1])
 
-    # Report recall, precision, and f1 score
+    # Calculate and report scores
     precision = precision_score(y_val, y_pred)
     recall = recall_score(y_val, y_pred)
     f1 = f1_score(y_val, y_pred)
+    weighted_score = weighted_precision_recall_score(y_val, y_pred)
+
     precisions.append(precision)
     recalls.append(recall)
     f1s.append(f1)
-    print(f"Fold {fold + 1} Precision: {precision:.2f}, Recall: {recall:.2f}, F1 Score: {f1:.2f}")
+    weighted_scores.append(weighted_score)
+
+    print(
+        f"Fold {fold + 1} Precision: {precision:.2f}, Recall: {recall:.2f}, F1: {f1:.2f}, "
+        f"Weighted: {weighted_score:.2f}"
+    )
     print(f"Misclassified Instances in Fold {fold + 1}: {len(misclassified_fold)}")
 
 # print the average precision, recall, and f1 score for all folds
@@ -356,6 +647,7 @@ print(f"\nAverage Metrics Across {n_cv_folds} Folds:")
 print(f"Precision: {sum(precisions) / len(precisions):.3f}")
 print(f"Recall: {sum(recalls) / len(recalls):.3f}")
 print(f"F1 Score: {sum(f1s) / len(f1s):.3f}")
+print(f"Weighted Score (recall x{recall_weight}): {sum(weighted_scores) / len(weighted_scores):.3f}")
 
 # %%
 # save the misclassified transactions to a csv file in the output directory
@@ -423,6 +715,9 @@ for name, _ in sorted(misclassified_by_name.items(), key=lambda x: x[1], reverse
                 labels.append(label)
 
 # save the transactions to a csv file
+logger.info(
+    f"Saving {len(transactions_to_review)} transactions to {os.path.join(out_dir, 'transactions_to_review.csv')}"
+)
 write_labeled_transactions(os.path.join(out_dir, "transactions_to_review.csv"), transactions_to_review, y, labels)
 
 # %%
@@ -453,36 +748,59 @@ if model_type == "rf":
 elif model_type == "xgb":
     model = xgb.XGBClassifier(random_state=42, **best_params, n_jobs=n_jobs)
 
+# First split data into train/test sets respecting user grouping
+logger.info("Splitting data into train/test sets respecting user grouping")
+gss = GroupShuffleSplit(n_splits=1, test_size=0.3, random_state=42)
+train_idx, test_idx = next(gss.split(X, y, groups=user_ids))
+
+X_train, X_test = X[train_idx], X[test_idx]
+y_train = np.array([y[i] for i in train_idx])
+y_test = np.array([y[i] for i in test_idx])
+user_ids_train = [user_ids[i] for i in train_idx]
+
+# Calculate step size as percentage of features (more efficient)
+step_pct = 0.05
+step_size = max(1, int(step_pct * X.shape[1]))  # 1% of features per step
 
 # RFECV performs recursive feature elimination with cross-validation
 # to find the optimal number of features
-logger.info("Performing recursive feature elimination")
+logger.info(f"Performing recursive feature elimination with step size {step_size}")
 cv = GroupKFold(n_splits=n_cv_folds)
 rfecv = RFECV(
     estimator=model,
-    step=1,
+    step=step_size,
     cv=cv,
-    scoring="f1",  # Metric to evaluate the model
+    scoring=custom_scorer,  # Using our custom scorer that weights recall more than precision
     min_features_to_select=50,  # Minimum number of features to select
     n_jobs=n_jobs,
 )
 
-# Fit the RFECV
-rfecv.fit(X, y, groups=user_ids)
+# Fit the RFECV on training data only
+rfecv.fit(X_train, y_train, groups=user_ids_train)
 logger.info(f"Optimal number of features: {rfecv.n_features_}")
 
 # Get the selected features
 selected_features = [i for i, selected in enumerate(rfecv.support_) if selected]
 selected_feature_names = [feature_names[i] for i in selected_features]
-print("Selected feature names")
-for feature in selected_feature_names:
-    print(feature)
+print(f"Selected {len(selected_feature_names)} features")
 
-# get the eliminated features
+# Get the eliminated features
 eliminated_features = [feature_names[i] for i in range(len(feature_names)) if i not in selected_features]
-print("Eliminated feature names")
-for feature in eliminated_features:
-    print(feature)
+print(f"Eliminated {len(eliminated_features)} features")
+
+# Save selected features to a text file
+selected_features_path = os.path.join(out_dir, "selected_features.txt")
+with open(selected_features_path, "w") as f:
+    for feature in selected_feature_names:
+        f.write(f"{feature}\n")
+logger.info(f"Saved {len(selected_feature_names)} selected features to {selected_features_path}")
+
+# Save eliminated features to a text file
+eliminated_features_path = os.path.join(out_dir, "eliminated_features.txt")
+with open(eliminated_features_path, "w") as f:
+    for feature in eliminated_features:
+        f.write(f"{feature}\n")
+logger.info(f"Saved {len(eliminated_features)} eliminated features to {eliminated_features_path}")
 
 # %%
 # plot the RFECV results
@@ -494,17 +812,16 @@ plt.xlabel("Number of features")
 plt.ylabel("Cross-validation accuracy")
 plt.title("Accuracy vs. Number of Features")
 plt.grid(True)
+plt.savefig(os.path.join(out_dir, "feature_selection_curve.png"))
 plt.show()
 
 # %%
-# Train a new model with only the selected features
-
-# Split the data
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+# Train models with selected features using the already created train/test split
 
 X_train_selected = X_train[:, selected_features]  # type: ignore
 X_test_selected = X_test[:, selected_features]  # type: ignore
 
+logger.info("Training model with selected features")
 if model_type == "rf":
     model_selected = RandomForestClassifier(random_state=42, **best_params, n_jobs=n_jobs)
 elif model_type == "xgb":
@@ -516,26 +833,43 @@ y_pred_selected = model_selected.predict(X_test_selected)
 precision = precision_score(y_test, y_pred_selected)
 recall = recall_score(y_test, y_pred_selected)
 f1 = f1_score(y_test, y_pred_selected)
+weighted_score = weighted_precision_recall_score(y_test, y_pred_selected)
 print("Selected Features:")
-print(f"Precision: {precision}")
-print(f"Recall: {recall}")
-print(f"F1 Score: {f1}")
+print(f"Precision: {precision:.3f}")
+print(f"Recall: {recall:.3f}")
+print(f"F1 Score: {f1:.3f}")
+print(f"Weighted Score (recall x{recall_weight}): {weighted_score:.3f}")
 
 # %%
 # Compare with model using all features
-
+logger.info("Training model with all features")
 if model_type == "rf":
     model_all = RandomForestClassifier(random_state=42, **best_params, n_jobs=n_jobs)
 elif model_type == "xgb":
     model_all = xgb.XGBClassifier(random_state=42, **best_params, n_jobs=n_jobs)
 model_all.fit(X_train, y_train)
 y_pred_all = model_all.predict(X_test)
-precision = precision_score(y_test, y_pred_all)
-recall = recall_score(y_test, y_pred_all)
-f1 = f1_score(y_test, y_pred_all)
+precision_all = precision_score(y_test, y_pred_all)
+recall_all = recall_score(y_test, y_pred_all)
+f1_all = f1_score(y_test, y_pred_all)
+weighted_score_all = weighted_precision_recall_score(y_test, y_pred_all)
 print("All Features:")
-print(f"Precision: {precision}")
-print(f"Recall: {recall}")
-print(f"F1 Score: {f1}")
+print(f"Precision: {precision_all:.3f}")
+print(f"Recall: {recall_all:.3f}")
+print(f"F1 Score: {f1_all:.3f}")
+print(f"Weighted Score (recall x{recall_weight}): {weighted_score_all:.3f}")
+
+# Save comparison results
+with open(os.path.join(out_dir, "feature_selection_results.txt"), "w") as f:
+    f.write(f"Selected Features ({len(selected_feature_names)}):\n")
+    f.write(f"Precision: {precision:.3f}\n")
+    f.write(f"Recall: {recall:.3f}\n")
+    f.write(f"F1 Score: {f1:.3f}\n")
+    f.write(f"Weighted Score (recall x{recall_weight}): {weighted_score:.3f}\n\n")
+    f.write(f"All Features ({len(feature_names)}):\n")
+    f.write(f"Precision: {precision_all:.3f}\n")
+    f.write(f"Recall: {recall_all:.3f}\n")
+    f.write(f"F1 Score: {f1_all:.3f}\n")
+    f.write(f"Weighted Score (recall x{recall_weight}): {weighted_score_all:.3f}\n")
 
 # %%
