@@ -44,9 +44,18 @@ from recur_scan.features_asimi import (
     get_amount_features as get_amount_features_asimi,
 )
 from recur_scan.features_bassey import (
+    get_days_since_last_transaction_bassey,
+    get_is_frequent_merchant_bassey,
     get_is_gym_membership,
+    get_is_high_value_transaction_bassey,
+    get_is_merchant_recurring_bassey,
+    get_is_recurring_apple_bassey,
+    get_is_same_day_multiple_transactions_bassey,
     get_is_streaming_service,
     get_is_subscription,
+    get_is_weekend_transaction_bassey,
+    get_is_weekly_recurring_apple_bassey,
+    get_monthly_spending_average_bassey,
 )
 from recur_scan.features_christopher import (
     detect_skipped_months,
@@ -862,9 +871,20 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "biweekly_interval": histogram["biweekly"],
         "monthly_interval": histogram["monthly"],
         # Bassey's features
-        "is_subscription": get_is_subscription(transaction),
-        "is_streaming_service": get_is_streaming_service(transaction),
-        "is_gym_membership": get_is_gym_membership(transaction),
+        "is_subscription_bassey": get_is_subscription(transaction),
+        "is_streaming_service_bassey": get_is_streaming_service(transaction),
+        "is_gym_membership_bassey": get_is_gym_membership(transaction),
+        "is_recurring_apple_bassey": get_is_recurring_apple_bassey(transaction, all_transactions),
+        "is_weekly_recurring_apple_bassey": get_is_weekly_recurring_apple_bassey(transaction, all_transactions),
+        "is_high_value_transaction_bassey": get_is_high_value_transaction_bassey(transaction),
+        "is_frequent_merchant_bassey": get_is_frequent_merchant_bassey(transaction, all_transactions),
+        "is_weekend_transaction_bassey": get_is_weekend_transaction_bassey(transaction),
+        "monthly_spending_average_bassey": get_monthly_spending_average_bassey(transaction, all_transactions),
+        "is_merchant_recurring_bassey": get_is_merchant_recurring_bassey(transaction, all_transactions),
+        "days_since_last_transaction_bassey": get_days_since_last_transaction_bassey(transaction, all_transactions),
+        "is_same_day_multiple_transactions_bassey": get_is_same_day_multiple_transactions_bassey(
+            transaction, all_transactions
+        ),
         # Raphael's features
         "same_day_exact_raphael": get_n_transactions_same_day_raphael(transaction, all_transactions, 0),
         "pct_transactions_same_day_raphael": get_pct_transactions_same_day_raphael(transaction, all_transactions, 0),
