@@ -68,9 +68,9 @@ def test_get_recurrence_patterns(sample_transactions) -> None:
     user1_netflix = [t for t in sample_transactions if t.user_id == "user1" and t.name == "Netflix"]
 
     result = get_recurrence_patterns(user1_netflix[0], user1_netflix)
-    assert result["is_monthly"] == 1
-    assert 27 <= result["avg_days_between"] <= 31  # Now should pass with adjusted dates
-    assert result["recurrence_score"] > 0.7
+    assert result["is_monthly_emmanuel2"] == 1
+    assert 27 <= result["avg_days_between_emmanuel2"] <= 31  # Now should pass with adjusted dates
+    assert result["recurrence_score_emmanuel2"] > 0.7
 
 
 def test_get_recurring_consistency_score(sample_transactions) -> None:
@@ -79,7 +79,7 @@ def test_get_recurring_consistency_score(sample_transactions) -> None:
     user1_netflix = [t for t in sample_transactions if t.user_id == "user1" and t.name == "Netflix"]
 
     result = get_recurring_consistency_score(user1_netflix[0], user1_netflix)
-    assert result["recurring_consistency_score"] > 0.8  # Should now pass with perfect consistency
+    assert result["recurring_consistency_score_emmanuel2"] > 0.8  # Should now pass with perfect consistency
 
 
 def test_no_transactions_for_user(sample_transactions):
@@ -88,9 +88,9 @@ def test_no_transactions_for_user(sample_transactions):
 
     result = get_user_behavior_features(test_transaction, sample_transactions)
 
-    assert result["user_avg_spent"] == 0.0
-    assert result["user_total_spent"] == 0.0
-    assert result["user_subscription_count"] == 0
+    assert result["user_avg_spent_emmanuel2"] == 0.0
+    assert result["user_total_spent_emmanuel2"] == 0.0
+    assert result["user_subscription_count_emmanuel2"] == 0
 
 
 def test_validate_recurring_transaction() -> None:
@@ -136,16 +136,16 @@ def test_get_amount_features(sample_transactions) -> None:
     """Test get_amount_features correctly identifies amount patterns."""
     # Fixed amount case
     result = get_amount_features(sample_transactions[0], sample_transactions)
-    assert result["is_fixed_amount_recurring"] == 1
-    assert result["amount_fluctuation"] == 0.0
+    assert result["is_fixed_amount_recurring_emmanuel2"] == 1
+    assert result["amount_fluctuation_emmanuel2"] == 0.0
 
     # Variable amount case
     result = get_amount_features(sample_transactions[5], sample_transactions)
-    assert result["is_fixed_amount_recurring"] == 0
-    assert result["amount_fluctuation"] == 5.00
+    assert result["is_fixed_amount_recurring_emmanuel2"] == 0
+    assert result["amount_fluctuation_emmanuel2"] == 5.00
 
     # Cluster test
-    assert result["price_cluster"] in [0, 1, 2]  # Should be one of the clusters
+    assert result["price_cluster_emmanuel2"] in [0, 1, 2]  # Should be one of the clusters
 
 
 def test_get_refund_features(sample_transactions) -> None:
@@ -158,8 +158,8 @@ def test_get_refund_features(sample_transactions) -> None:
     transactions_with_refund = [*sample_transactions, test_txn, refund_txn]
 
     result = get_refund_features(test_txn, transactions_with_refund)
-    assert result["refund_rate"] > 0
-    assert result["avg_refund_time_lag"] == 5
+    assert result["refund_rate_emmanuel2"] > 0
+    assert result["avg_refund_time_lag_emmanuel2"] == 5
 
 
 def test_get_monthly_spending_trend(sample_transactions) -> None:
@@ -169,9 +169,9 @@ def test_get_monthly_spending_trend(sample_transactions) -> None:
     result = get_monthly_spending_trend(jan_txn, sample_transactions)
 
     expected = sum(t.amount for t in sample_transactions if t.date.startswith("2024-01"))
-    assert result["monthly_spending_trend"] == expected
+    assert result["monthly_spending_trend_emmanuel2"] == expected
 
     # Month with no transactions
     empty_month_txn = Transaction(id=15, user_id="user1", name="Test", amount=10.00, date="2025-01-01")
     result = get_monthly_spending_trend(empty_month_txn, sample_transactions)
-    assert result["monthly_spending_trend"] == 0
+    assert result["monthly_spending_trend_emmanuel2"] == 0
