@@ -322,9 +322,12 @@ from recur_scan.features_felix import (
     get_day as get_day_felix,
     get_dispersion_transaction_amount as get_dispersion_transaction_amount_felix,
     get_is_always_recurring as get_is_always_recurring_felix,
+    get_is_amazon_prime as get_is_amazon_prime_felix,
+    get_is_att_transaction as get_is_att_transaction_felix,
     get_is_insurance as get_is_insurance_felix,
     get_is_phone as get_is_phone_felix,
     get_is_utility as get_is_utility_felix,
+    get_likelihood_of_recurrence as get_likelihood_of_recurrence_felix,
     get_max_transaction_amount as get_max_transaction_amount_felix,
     get_median_variation_transaction_amount as get_median_variation_transaction_amount_felix,
     get_min_transaction_amount as get_min_transaction_amount_felix,
@@ -332,8 +335,11 @@ from recur_scan.features_felix import (
     get_n_transactions_same_vendor as get_n_transactions_same_vendor_felix,
     get_transaction_intervals as get_transaction_intervals_felix,
     get_transaction_rate as get_transaction_rate_felix,
+    get_transaction_recency as get_transaction_recency_felix,
     get_transactions_interval_stability as get_transactions_interval_stability_felix,
     get_variation_ratio as get_variation_ratio_felix,
+    get_vendor_transaction_frequency as get_vendor_transaction_frequency_felix,
+    get_vendor_transaction_recurring as get_vendor_transaction_recurring_felix,
     get_year as get_year_felix,
 )
 from recur_scan.features_frank import (
@@ -1266,6 +1272,12 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "dispersion_transaction_amount_felix": get_dispersion_transaction_amount_felix(transaction, all_transactions),
         "transaction_rate_felix": get_transaction_rate_felix(transaction, all_transactions),
         **get_transaction_intervals_felix(all_transactions),
+        "is_amazon_prime_felix": get_is_amazon_prime_felix(transaction),
+        "vendor_transaction_frequency_felix": get_vendor_transaction_frequency_felix(transaction, all_transactions),
+        "vendor_transaction_recurring_felix": get_vendor_transaction_recurring_felix(transaction, all_transactions),
+        "likelihood_of_recurrence_felix": get_likelihood_of_recurrence_felix(transaction, all_transactions),
+        "transaction_recency_felix": get_transaction_recency_felix(transaction, all_transactions),
+        "is_att_transaction_felix": get_is_att_transaction_felix(transaction),
         # Adeyinka's features
         "avg_days_between_transactions_adeyinka": get_average_days_between_transactions_adeyinka(
             transaction, all_transactions
