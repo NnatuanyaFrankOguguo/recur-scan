@@ -465,11 +465,20 @@ from recur_scan.features_nnanna import (
     is_monthly_apple_storage as is_monthly_apple_storage_nnanna,
 )
 from recur_scan.features_osasere import (
+    detect_financial_service_fees as detect_financial_service_fees_osasere,
+    detect_housing_payments as detect_housing_payments_osasere,
+    detect_installment_payments as detect_installment_payments_osasere,
+    detect_insurance_payments as detect_insurance_payments_osasere,
+    detect_streaming_services as detect_streaming_services_osasere,
     get_day_of_month_consistency as get_day_of_month_consistency_osasere,
     get_day_of_month_variability as get_day_of_month_variability_osasere,
+    get_fixed_recurring as get_fixed_recurring_osasere,
     get_median_period as get_median_period_osasere,
     get_recurrence_confidence as get_recurrence_confidence_osasere,
+    has_consistent_amount as has_consistent_amount_osasere,
     has_min_recurrence_period as has_min_recurrence_period_osasere,
+    has_regular_interval as has_regular_interval_osasere,
+    is_likely_recurring_by_merchant as is_likely_recurring_by_merchant_osasere,
     is_weekday_consistent as is_weekday_consistent_osasere,
 )
 from recur_scan.features_praise import (
@@ -1225,6 +1234,16 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "recurrence_confidence_osasere": get_recurrence_confidence_osasere(transaction, all_transactions),
         "median_period_days_osasere": get_median_period_osasere(transaction, all_transactions),
         "is_weekday_consistent_osasere": is_weekday_consistent_osasere(transaction, all_transactions),
+        "is_AT&T_osasere": get_fixed_recurring_osasere("AT&T", transaction),
+        "is_water_utility_osasere": get_fixed_recurring_osasere("Water", transaction),
+        "is_installment_payment_osasere": detect_installment_payments_osasere(transaction, all_transactions),
+        "is_financial_service_fee_osasere": detect_financial_service_fees_osasere(transaction, all_transactions),
+        "is_housing_payment_osasere": detect_housing_payments_osasere(transaction, all_transactions),
+        "is_streaming_service_osasere": detect_streaming_services_osasere(transaction),
+        "is_insurance_payment_osasere": detect_insurance_payments_osasere(transaction),
+        "is_recurring_merchant_osasere": is_likely_recurring_by_merchant_osasere(transaction),
+        "has_consistent_amount_osasere": has_consistent_amount_osasere(transaction, all_transactions),
+        "has_regular_interval_osasere": has_regular_interval_osasere(transaction, all_transactions),
         # Felix's features
         "n_transactions_same_vendor_felix": get_n_transactions_same_vendor_felix(transaction, all_transactions),
         "max_transaction_amount_felix": get_max_transaction_amount_felix(all_transactions),
