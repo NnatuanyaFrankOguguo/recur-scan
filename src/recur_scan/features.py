@@ -225,8 +225,10 @@ from recur_scan.features_efehi import (
     get_transaction_frequency as get_transaction_frequency_efehi,
     get_transaction_time_of_month as get_transaction_time_of_month_efehi,
     get_user_transaction_frequency as get_user_transaction_frequency_efehi,
+    get_vendor_category_score as get_vendor_category_score_efehi,
     get_vendor_recurrence_consistency as get_vendor_recurrence_consistency_efehi,
     get_vendor_recurring_ratio as get_vendor_recurring_ratio_efehi,
+    rolling_amount_deviation as rolling_amount_deviation_efehi,
 )
 from recur_scan.features_elliot import (
     amount_similarity as amount_similarity_elliot,
@@ -1166,6 +1168,8 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "user_transaction_frequency_efehi": get_user_transaction_frequency_efehi(transaction.user_id, all_transactions),
         "vendor_recurring_ratio_efehi": get_vendor_recurring_ratio_efehi(transaction, all_transactions),
         "vendor_recurrence_consistency_efehi": get_vendor_recurrence_consistency_efehi(transaction, all_transactions),
+        "vendor_category_score_efehi": get_vendor_category_score_efehi(transaction),
+        "rolling_amount_deviation_efehi": rolling_amount_deviation_efehi(transaction, all_transactions),
         # Adedotun's features
         "percent_transactions_same_amount_tolerant_at_adedotun": get_percent_transactions_same_amount_tolerant_adedotun(
             transaction, vendor_txns
