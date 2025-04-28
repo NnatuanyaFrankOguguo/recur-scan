@@ -100,17 +100,22 @@ from recur_scan.features_bassey import (
     get_monthly_spending_average_bassey,
 )
 from recur_scan.features_christopher import (
-    detect_skipped_months as detect_skipped_months_christopher,
-    follows_regular_interval as follows_regular_interval_christopher,
-    get_coefficient_of_variation as get_coefficient_of_variation_christopher,
-    get_day_of_month_consistency as get_day_of_month_consistency_christopher,
-    get_median_interval as get_median_interval_christopher,
+    amount_consistency_chris as amount_consistency_christopher,
+    amount_deviation_chris as amount_deviation_christopher,
+    day_of_month_consistency_chris as day_of_month_consistency_christopher,
+    detect_skipped_months_chris as detect_skipped_months_christopher,
+    follows_regular_interval_chris as follows_regular_interval_christopher,
+    get_coefficient_of_variation_chris as get_coefficient_of_variation_christopher,
+    get_day_of_month_consistency_chris as get_day_of_month_consistency_christopher,
+    get_median_interval_chris as get_median_interval_christopher,
     get_n_transactions_same_amount_chris as get_n_transactions_same_amount_christopher,
     get_percent_transactions_same_amount_chris as get_percent_transactions_same_amount_christopher,
-    get_transaction_frequency as get_transaction_frequency_christopher,
-    get_transaction_std_amount as get_transaction_std_amount_christopher,
-    is_known_fixed_subscription as is_known_fixed_subscription_christopher,
-    is_known_recurring_company as is_known_recurring_company_christopher,
+    get_transaction_frequency_chris as get_transaction_frequency_christopher,
+    get_transaction_std_amount_chris as get_transaction_std_amount_christopher,
+    is_known_fixed_subscription_chris as is_known_fixed_subscription_christopher,
+    is_known_recurring_company_chris as is_known_recurring_company_christopher,
+    is_regular_interval_chris as is_regular_interval_christopher,
+    transaction_frequency_chris as transaction_frequency_christopher,
 )
 from recur_scan.features_dallanq import (
     amount_diff_from_mean as amount_diff_from_mean_dallanq,
@@ -939,6 +944,11 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
         "median_interval_christopher": get_median_interval_christopher(all_transactions),
         "is_known_recurring_company_christopher": is_known_recurring_company_christopher(transaction.name),
         "is_known_fixed_subscription_christopher": is_known_fixed_subscription_christopher(transaction),
+        "is_regular_interval_christopher": is_regular_interval_christopher(transaction, all_transactions),
+        "amount_deviation_christopher": amount_deviation_christopher(transaction, all_transactions),
+        "amount_consistency_christopher": amount_consistency_christopher(transaction, all_transactions),
+        "transaction_frequency_christopher2": transaction_frequency_christopher(transaction, all_transactions),
+        "day_of_month_consistency_christopher2": day_of_month_consistency_christopher(transaction, all_transactions),
         # Laurels' features
         "identical_transaction_ratio_laurels": identical_transaction_ratio_feature_laurels(
             transaction, all_transactions, merchant_trans
