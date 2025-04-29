@@ -1119,7 +1119,14 @@ def is_always_recurring_vendor(transactions: list[Transaction]) -> float:
     Marks known fixed recurring vendors as recurring (e.g., Sprint, Waterford Grove, RightNow)
     regardless of amount or interval consistency.
     """
-    always_recurring_vendors = {"sprint", "waterford grove", "rightnow", "bet", "sezzle", "american water works"}
+    always_recurring_vendors = {
+        "sprint",
+        # "waterford grove",  # too specific
+        # "rightnow",  # too specific
+        "bet",
+        "sezzle",
+        "american water works",
+    }
 
     for t in transactions:
         name = t.name.lower()
@@ -1157,8 +1164,8 @@ def is_utilities_or_insurance_like(transactions: list[Transaction]) -> float:
         "housing",
         "mortgage",
         "trash",
-        "rightnow",
-        "waterford grove",
+        # "rightnow",  # too specific
+        # "waterford grove",  # too specific
     ]
 
     if not any(keyword in vendor_name for keyword in utility_keywords):

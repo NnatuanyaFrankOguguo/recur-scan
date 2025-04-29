@@ -48,7 +48,7 @@ def is_recurring_merchant(transaction: Transaction) -> bool:
         "amazonprime",
         "duke energy",
         "adobe",
-        "healthy.line",
+        # "healthy.line",  # too specific
         "canva pty limite",
         "brigit",
         "cleo",

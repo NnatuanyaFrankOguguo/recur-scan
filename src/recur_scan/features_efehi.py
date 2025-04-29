@@ -254,7 +254,9 @@ def get_vendor_category_score(transaction: Transaction) -> float:
     ]
     insurance_vendors = ["GEICO", "Lemonade Insurance", "Progressive Insurance", "Hugo Insurance", "Tn Farm Mutual"]
     telecom_vendors = ["AT&T", "Sprint", "Verizon", "TMOBILE", "Straight Talk"]
-    housing_vendors = ["Waterford Grove"]
+    housing_vendors: list[str] = [
+        # "Waterford Grove"  # too specific
+    ]
 
     vendor = transaction.name.lower()
     if any(v.lower() in vendor for v in subscription_vendors + loan_vendors):

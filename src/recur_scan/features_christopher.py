@@ -139,10 +139,10 @@ def is_known_recurring_company_chris(transaction_name: str) -> bool:
         "netflix",
         "ngrid",
         "peacock",
-        "placer county water age",
+        # "placer county water age",  # too specific
         "spotify",
         "sezzle",
-        "smyrna finance",
+        # "smyrna finance",  # too specific
         "spectrum",
         "utility",
         "utilities",

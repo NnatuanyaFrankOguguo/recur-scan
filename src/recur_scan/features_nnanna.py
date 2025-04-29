@@ -571,9 +571,10 @@ def get_new_features(transaction: Transaction, all_transactions: list[Transactio
         #   get_recurring_transaction_by_amount_and_interval(transaction, all_transactions),
         # "recurring_by_short_interval_nnanna":
         #     get_recurring_transaction_by_short_interval(transaction, all_transactions),
-        "u_dot_express_lane_nnanna": float(
-            bool(re.match(r"(?i)^U-dot-express Lane$", transaction.name)) and transaction.amount != 2.50
-        ),
+        # u-do express lane is too specific
+        # "u_dot_express_lane_nnanna": float(
+        #     bool(re.match(r"(?i)^U-dot-express Lane$", transaction.name)) and transaction.amount != 2.50
+        # ),
         #    "recency_nnanna": get_weighted_recency(all_transactions, transaction),
         # "cluster_nnanna": float(
         #     np.mean(get_transaction_clusters(all_transactions, transaction.name))
@@ -584,6 +585,7 @@ def get_new_features(transaction: Transaction, all_transactions: list[Transactio
         #    "outlier_nnanna": float(is_outlier(transaction, all_transactions)),
         #    "temporal_pattern_score_nnanna": get_temporal_pattern_score(transaction),
         "monthly_apple_storage_nnanna": float(is_monthly_apple_storage(transaction, all_transactions)),
-        "cobblestone_recurrence_score_nnanna": get_cobblestone_recurrence_score(transaction, all_transactions),
+        # cobblestone wash is too specific
+        # "cobblestone_recurrence_score_nnanna": get_cobblestone_recurrence_score(transaction, all_transactions),
         "consistent_transaction_amount_nnanna": float(is_consistent_transaction_amount(transaction, all_transactions)),
     }

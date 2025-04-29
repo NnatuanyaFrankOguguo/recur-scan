@@ -1063,13 +1063,7 @@ def get_features(transaction: Transaction, all_transactions: list[Transaction]) 
             transaction, all_transactions
         ),
         "average_transaction_amount_nnanna": get_average_transaction_amount_nnanna(transaction, all_transactions),
-        # too specific to one vendor
-        # "u_dot_express_lane_nnanna": float(
-        #     bool(re.match(r"(?i)^U-dot-express Lane$", transaction.name)) and transaction.amount != 2.50
-        # ),
         "monthly_apple_storage_nnanna": float(is_monthly_apple_storage_nnanna(transaction, all_transactions)),
-        # too specific to one vendor
-        # "cobblestone_recurrence_score_nnanna": get_cobblestone_recurrence_score(transaction, all_transactions),
         "consistent_transaction_amount_nnanna": float(
             is_consistent_transaction_amount_nnanna(transaction, all_transactions)
         ),

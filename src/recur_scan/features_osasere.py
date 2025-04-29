@@ -367,8 +367,8 @@ def detect_housing_payments(
         "property",
         "realty",
         "real estate",
-        "waterford",
-        "grove",
+        # "waterford",  # too specific
+        # "grove",  # too specific
         "residence",
         "home",
     ]
