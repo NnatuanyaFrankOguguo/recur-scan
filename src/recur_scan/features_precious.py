@@ -108,6 +108,8 @@ def get_stddev_days_between_same_merchant_amount(
         ).days
         for t1, t2 in itertools.pairwise(same_transactions)
     ]
+    if len(intervals) <= 1:
+        return 0.0
     try:
         return statistics.stdev(intervals)
     except statistics.StatisticsError:
@@ -208,10 +210,13 @@ def get_additional_features(
     )
     merchant_amounts = [t.amount for t in all_transactions if t.name == transaction.name]
     if merchant_amounts:
-        amount_stddev: float = statistics.stdev(merchant_amounts) if len(merchant_amounts) > 1 else 0.0
+        # try:
+        #     amount_stddev: float = statistics.stdev(merchant_amounts) if len(merchant_amounts) > 1 else 0.0
+        # except Exception:
+        #     amount_stddev = 0.0
         merchant_avg: float = statistics.mean(merchant_amounts)
     else:
-        amount_stddev = 0.0
+        # amount_stddev = 0.0
         merchant_avg = 0.0
     relative_amount_difference: float = (
         abs(transaction.amount - merchant_avg) / merchant_avg if merchant_avg != 0 else 0.0
@@ -226,7 +231,7 @@ def get_additional_features(
         "max_days_between_precious": max_interval,
         "merchant_total_count_precious": merchant_total_count,
         "merchant_recent_count_precious": merchant_recent_count,
-        "merchant_amount_stddev_precious": amount_stddev,
+        # "merchant_amount_stddev_precious": amount_stddev,
         "relative_amount_difference_precious": relative_amount_difference,
     }
 
@@ -245,7 +250,7 @@ def get_amount_variation_features(
     relative_diff = abs(transaction.amount - merchant_avg) / merchant_avg if merchant_avg != 0 else 0.0
     amount_anomaly = relative_diff > threshold
     return {
-        "merchant_avg_precious": merchant_avg,
+        # "merchant_avg_precious": merchant_avg,
         "relative_amount_diff_precious": relative_diff,
         "amount_anomaly_precious": amount_anomaly,
     }
@@ -257,7 +262,7 @@ def get_amount_variation_features(
 def get_new_features(
     transaction: Any,
     all_transactions: list[Any],
-    threshold: float = 0.2,
+    # threshold: float = 0.2,
 ) -> dict[str, float | int | bool]:
     """Extracts comprehensive set of features for transaction recurrence detection."""
     # -------------------------- Core Features --------------------------
@@ -293,7 +298,7 @@ def get_new_features(
     merchant_transactions = [t for t in all_transactions if t.name == transaction.name]
     merchant_avg = statistics.mean([t.amount for t in merchant_transactions]) if merchant_transactions else 0.0
     relative_diff = abs(transaction.amount - merchant_avg) / merchant_avg if merchant_avg != 0 else 0.0
-    amount_anomaly = relative_diff > threshold
+    # amount_anomaly = relative_diff > threshold
 
     same_amt = sorted(
         (t for t in merchant_transactions if t.amount == amt),
@@ -309,8 +314,12 @@ def get_new_features(
 
     if intervals:
         avg_interval = statistics.mean(intervals)
-        std_interval = statistics.stdev(intervals) if len(intervals) > 1 else 0.0
-        interval_variance_ratio = std_interval / avg_interval if avg_interval else 0.0
+        try:
+            std_interval = statistics.stdev(intervals) if len(intervals) > 1 else 0.0
+            interval_variance_ratio = std_interval / avg_interval if avg_interval else 0.0
+        except Exception:
+            std_interval = 0.0
+            interval_variance_ratio = 0.0
         median_interval = statistics.median(intervals)
         mad_interval = statistics.median([abs(iv - median_interval) for iv in intervals])
     else:
@@ -415,7 +424,7 @@ def get_new_features(
         # Additional features
         "merchant_avg_precious": merchant_avg,
         "relative_amount_diff_precious": relative_diff,
-        "amount_anomaly_precious": amount_anomaly,
+        # "amount_anomaly_precious": amount_anomaly,
         "interval_variance_ratio_precious": interval_variance_ratio,
         "dom_consistency_precious": dom_consistency,
         "seasonality_score_precious": seasonality_score,

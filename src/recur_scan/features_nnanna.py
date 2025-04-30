@@ -87,7 +87,10 @@ def get_coefficient_of_variation(transaction: Transaction, all_transactions: lis
     mean = np.mean(vendor_transactions)  # Calculate the mean
     if mean == 0:
         return 0.0  # Avoid division by zero
-    std_dev = np.std(vendor_transactions)  # Calculate the standard deviation
+    try:
+        std_dev = float(np.std(vendor_transactions))  # Calculate the standard deviation
+    except Exception:
+        std_dev = 0.0
     return float(std_dev / mean)  # Return the coefficient of variation
 
 
@@ -542,7 +545,10 @@ def is_consistent_transaction_amount(
 
     # Calculate the coefficient of variation (CV)
     mean = np.mean(vendor_transactions)
-    std_dev = np.std(vendor_transactions)
+    try:
+        std_dev = float(np.std(vendor_transactions))
+    except Exception:
+        std_dev = 0.0
     if mean == 0:
         return False  # Avoid division by zero
 

@@ -75,7 +75,10 @@ def _calculate_statistics(values: list[float]) -> dict[str, float]:
         total += num
     mean_value = total / len(values)
     # Use NumPy for efficient standard deviation calculation
-    std_value = float(np.std(values))
+    try:
+        std_value = float(np.std(values))
+    except Exception:
+        std_value = 0.0
     stats["mean"] = mean_value
     stats["std"] = std_value
     return stats
@@ -173,7 +176,10 @@ def day_consistency_score_feature(merchant_trans: list[Transaction]) -> float:
         return 0.0
     if len(days) == 1:
         return 0.5
-    std = float(np.std(days))
+    try:
+        std = float(np.std(days))
+    except Exception:
+        std = 0.0
     return 1.0 - min(std / 3.0, 1.0)
 
 

@@ -47,7 +47,10 @@ def get_std_amount_same_name(transaction: Transaction, all_transactions: list[Tr
 
     # Calculate and return the standard deviation of the amounts
     amounts = [t.amount for t in same_name_transactions]
-    return statistics.stdev(amounts)
+    try:
+        return statistics.stdev(amounts)
+    except Exception:
+        return 0.0
 
 
 def get_n_transactions_same_month(transaction: Transaction, all_transactions: list[Transaction]) -> int:
@@ -88,7 +91,10 @@ def get_std_amount_same_month(transaction: Transaction, all_transactions: list[T
     ]
     if len(same_month_transactions) < 2:
         return 0.0
-    return statistics.stdev(t.amount for t in same_month_transactions)
+    try:
+        return statistics.stdev(t.amount for t in same_month_transactions)
+    except Exception:
+        return 0.0
 
 
 def get_n_transactions_same_user_id(transaction: Transaction, all_transactions: list[Transaction]) -> int:
@@ -139,7 +145,10 @@ def get_std_amount_same_day_of_week(transaction: Transaction, all_transactions: 
     ]
     if len(same_day_of_week_transactions) < 2:
         return 0.0
-    return statistics.stdev(t.amount for t in same_day_of_week_transactions)
+    try:
+        return statistics.stdev(t.amount for t in same_day_of_week_transactions)
+    except Exception:
+        return 0.0
 
 
 def get_n_transactions_within_amount_range(

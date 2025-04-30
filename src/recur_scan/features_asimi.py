@@ -105,7 +105,7 @@ def get_user_specific_features(transaction: Transaction, all_transactions: list[
     user_transactions = [t for t in all_transactions if t.user_id == transaction.user_id]
     if len(user_transactions) < 2:
         return {
-            "user_transaction_count_asimi": 0.0,
+            # "user_transaction_count_asimi": 0.0,
             "user_recurring_transaction_count_asimi": 0.0,
             "user_recurring_transaction_rate_asimi": 0.0,
         }
@@ -114,7 +114,7 @@ def get_user_specific_features(transaction: Transaction, all_transactions: list[
     user_recurring_transaction_rate = recurring_count / len(user_transactions)
 
     return {
-        "user_transaction_count_asimi": len(user_transactions),
+        # "user_transaction_count_asimi": len(user_transactions),
         "user_recurring_transaction_count_asimi": recurring_count,
         "user_recurring_transaction_rate_asimi": user_recurring_transaction_rate,
     }
@@ -253,7 +253,7 @@ def get_vendor_recurrence_profile(transaction: Transaction, all_transactions: li
 
     if total_vendor_transactions == 0:
         return {
-            "vendor_recurrence_score_asimi": 0.0,
+            # "vendor_recurrence_score_asimi": 0.0,
             "vendor_recurrence_consistency_asimi": 0.0,
             "vendor_is_common_recurring_asimi": 0,
         }
@@ -287,7 +287,7 @@ def get_vendor_recurrence_profile(transaction: Transaction, all_transactions: li
     }
 
     return {
-        "vendor_recurrence_score_asimi": len(recurring_users) / len({t.user_id for t in vendor_transactions}),
+        # "vendor_recurrence_score_asimi": len(recurring_users) / len({t.user_id for t in vendor_transactions}),
         "vendor_recurrence_consistency_asimi": amount_consistency,
         "vendor_is_common_recurring_asimi": int(vendor_name in common_recurring_vendors),
     }
@@ -303,10 +303,14 @@ def get_user_vendor_relationship_features(
     user_transactions = [t for t in all_transactions if t.user_id == transaction.user_id]
 
     if not user_transactions:
-        return {"user_vendor_dependency_asimi": 0.0, "user_vendor_tenure_asimi": 0.0}
+        return {
+            # "user_vendor_dependency_asimi": 0.0,
+            "user_vendor_tenure_asimi": 0.0,
+            "user_vendor_transaction_span_asimi": 0.0,
+        }
 
     # Calculate what percentage of user's transactions are with this vendor
-    dependency = len(user_vendor_transactions) / len(user_transactions)
+    # dependency = len(user_vendor_transactions) / len(user_transactions)
 
     # Calculate tenure (days since first transaction with this vendor)
     if user_vendor_transactions:
@@ -316,7 +320,7 @@ def get_user_vendor_relationship_features(
         tenure = 0
 
     return {
-        "user_vendor_dependency_asimi": dependency,
+        # "user_vendor_dependency_asimi": dependency,
         "user_vendor_tenure_asimi": tenure,
         "user_vendor_transaction_span_asimi": tenure,
     }
@@ -477,7 +481,10 @@ def get_amount_temporal_consistency(transaction: Transaction, all_transactions: 
 
     # Amount consistency (standard deviation)
     amounts = np.array([t.amount for t in vendor_trans])
-    amount_std = np.std(amounts)
+    try:
+        amount_std = np.std(amounts)
+    except Exception:
+        amount_std = 0.0
 
     # Temporal regularity (interval coefficient of variation)
     dates = [datetime.datetime.strptime(t.date, "%Y-%m-%d") for t in vendor_trans]

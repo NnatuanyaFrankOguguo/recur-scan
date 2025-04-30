@@ -26,7 +26,10 @@ def get_transaction_amount_stability(transaction: Transaction, all_transactions:
     same_name_transactions = [t.amount for t in all_transactions if t.name == transaction.name]
     if len(same_name_transactions) < 2:
         return 0.0
-    return float(np.std(same_name_transactions))
+    try:
+        return float(np.std(same_name_transactions))
+    except Exception:
+        return 0.0
 
 
 def get_time_between_transactions(transaction: Transaction, all_transactions: list[Transaction]) -> float:
@@ -61,7 +64,10 @@ def get_irregular_periodicity(transaction: Transaction, all_transactions: list[T
         return 0.0
     dates = sorted(_get_days(t.date) for t in same_name_transactions)
     intervals = [dates[i + 1] - dates[i] for i in range(len(dates) - 1)]
-    return float(np.std(intervals)) if intervals else 0.0
+    try:
+        return float(np.std(intervals))
+    except Exception:
+        return 0.0
 
 
 def get_irregular_periodicity_with_tolerance(
@@ -86,7 +92,10 @@ def get_irregular_periodicity_with_tolerance(
         if not added:
             interval_groups.append([interval])
     largest_group = max(interval_groups, key=len)
-    largest_group_std = float(np.std(largest_group)) if len(largest_group) > 1 else 0.0
+    try:
+        largest_group_std = float(np.std(largest_group))
+    except Exception:
+        largest_group_std = 0.0
     median_interval = float(np.median(intervals))
     normalized_std = largest_group_std / median_interval if median_interval > 0 else 0.0
     return normalized_std

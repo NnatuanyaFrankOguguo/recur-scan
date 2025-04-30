@@ -174,9 +174,16 @@ def get_amount_variation(transaction: Transaction, transactions: list[Transactio
         return 0.0
 
     amounts = [t.amount for t in same_name_txns]
-    mean = sum(amounts) / len(amounts)
-    std_dev = (sum((x - mean) ** 2 for x in amounts) / len(amounts)) ** 0.5
-    return float((std_dev / mean) * 100) if mean != 0 else 0.0
+    if len(set(amounts)) <= 1:
+        return 0.0
+    try:
+        mean = sum(amounts) / len(amounts)
+        if abs(mean) < 1e-8:
+            return 0.0
+        std_dev = (sum((x - mean) ** 2 for x in amounts) / len(amounts)) ** 0.5
+        return float((std_dev / mean) * 100)
+    except Exception:
+        return 0.0
 
 
 def get_has_trial_period(transaction: Transaction, transactions: list[Transaction]) -> bool:
@@ -211,8 +218,12 @@ def get_merchant_fingerprint(transaction: Transaction, transactions: list[Transa
         amounts = [t.amount for t in same_merchant]
         days = [datetime.strptime(t.date, "%Y-%m-%d").day for t in same_merchant]
         # Penalize amount variation more strongly
-        amount_stability = 1 - min(1, (float(np.std(amounts)) / (float(np.mean(amounts)) + 1e-6)) ** 1.5)
-        day_stability = 1 - (float(np.std(days)) / 15)
+        try:
+            amount_stability = 1 - min(1, (float(np.std(amounts)) / (float(np.mean(amounts)) + 1e-6)) ** 1.5)
+            day_stability = 1 - (float(np.std(days)) / 15)
+        except Exception:
+            amount_stability = 0
+            day_stability = 0
     else:
         amount_stability = 0
         day_stability = 0
@@ -241,8 +252,12 @@ def get_recurrence_confidence_score(transaction: Transaction, transactions: list
     days = [datetime.strptime(t.date, "%Y-%m-%d").day for t in same_merchant]
 
     # Stronger penalty for amount variation
-    amount_stability = 1 - min(1, (float(np.std(amounts)) / (float(np.mean(amounts)) + 1e-6)) ** 3.0)
-    day_stability = 1 - (float(np.std(days)) / 15)
+    try:
+        amount_stability = 1 - min(1, (float(np.std(amounts)) / (float(np.mean(amounts)) + 1e-6)) ** 3.0)
+        day_stability = 1 - (float(np.std(days)) / 15)
+    except Exception:
+        amount_stability = 0
+        day_stability = 0
 
     # Payment method clues
     method_score = 0.5 if any("ach" in t.name.lower() or "autopay" in t.name.lower() for t in same_merchant) else 0

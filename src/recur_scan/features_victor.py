@@ -20,7 +20,12 @@ def interval_variability(all_transactions: list[Transaction]) -> float:
         return 0.0
     dates = sorted([datetime.strptime(t.date, "%Y-%m-%d") for t in all_transactions])
     intervals = [(dates[i + 1] - dates[i]).days for i in range(len(dates) - 1)]
-    return float(np.std(intervals, ddof=1)) if intervals else 0.0
+    if len(intervals) <= 1:
+        return 0.0
+    try:
+        return float(np.std(intervals, ddof=1)) if intervals else 0.0
+    except Exception:
+        return 0.0
 
 
 def amount_cluster_count(all_transactions: list[Transaction], tolerance: float = 0.05) -> float:

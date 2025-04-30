@@ -645,7 +645,10 @@ def get_subscription_score(all_transactions: list[Transaction]) -> float:
 
     # Amount consistency (adaptive threshold with rolling deviation)
     median_amount = median(amounts)
-    std_dev = float(np.std(amounts))  # ✅ Convert np.float64 to Python float
+    try:
+        std_dev = float(np.std(amounts))  # ✅ Convert np.float64 to Python float
+    except Exception:
+        std_dev = 0.0
     threshold = max(0.15 * median_amount, std_dev * 0.5)
     amount_consistency = sum(1 for amount in amounts if abs(amount - median_amount) <= threshold) / len(amounts)
 
@@ -666,7 +669,10 @@ def get_amount_consistency(all_transactions: list[Transaction]) -> float:
         return 0.0
 
     median_amount = median(amounts)
-    std_dev = float(np.std(amounts))  # Explicit conversion
+    try:
+        std_dev = float(np.std(amounts))  # Explicit conversion
+    except Exception:
+        std_dev = 0.0
     threshold = max(0.15 * median_amount, std_dev * 0.5)
 
     amount_consistency = sum(1 for amount in amounts if abs(amount - median_amount) <= threshold) / len(amounts)
@@ -797,7 +803,10 @@ def amount_coefficient_of_variation(transactions: list[Transaction]) -> float:
     if len(amounts) < 2 or mean(amounts) == 0:
         return 0.0
     # Use population std (ddof=0) to match test expectations.
-    pop_std = np.std(amounts, ddof=0)
+    try:
+        pop_std = float(np.std(amounts, ddof=0))
+    except Exception:
+        pop_std = 0.0
     return float(pop_std / mean(amounts))
 
 
@@ -823,7 +832,10 @@ def detect_variable_subscription(all_transactions: list[Transaction]) -> float:
 
     # If changes are relatively consistent and small, likely a variable subscription
     avg_change = np.mean(pct_changes)
-    std_change = np.std(pct_changes)
+    try:
+        std_change = float(np.std(pct_changes))
+    except Exception:
+        std_change = 0.0
 
     # Score based on stability of changes
     if avg_change > 0.5:  # Too much variation
@@ -907,7 +919,10 @@ def detect_annual_price_adjustment(all_transactions: list[Transaction]) -> float
 
     # Score based on consistency
     avg_change = np.mean(yearly_changes)
-    std_change = np.std(yearly_changes)
+    try:
+        std_change = float(np.std(yearly_changes))
+    except Exception:
+        std_change = 0.0
 
     consistency_score = 1.0 - min(float(std_change / avg_change) if avg_change > 0 else 1.0, 1.0)
     return float(consistency_score)
@@ -1007,7 +1022,10 @@ def is_amazon_retail_irregular(transactions: list[Transaction]) -> float:
     if len(amounts) < 2:
         return 0.0
 
-    std_dev = np.std(amounts)
+    try:
+        std_dev = float(np.std(amounts))
+    except Exception:
+        std_dev = 0.0
     if std_dev > 20:  # High deviation in retail behavior
         return 1.0
     return 0.0
@@ -1055,9 +1073,15 @@ def is_apple_irregular_purchase(transactions: list[Transaction]) -> float:
     if not amounts or not dates:
         return 0.0
 
-    amount_std = np.std(amounts)
+    try:
+        amount_std = float(np.std(amounts))
+    except Exception:
+        amount_std = 0.0
     interval_days = [(dates[i] - dates[i - 1]).days for i in range(1, len(dates))]
-    interval_std = float(np.std(interval_days)) if interval_days else 0.0
+    try:
+        interval_std = float(np.std(interval_days))
+    except Exception:
+        interval_std = 0.0
 
     if amount_std > 5.0 or interval_std > 5.0:
         return 1.0
@@ -1072,7 +1096,10 @@ def is_cleo_ai_cash_advance_like(transactions: list[Transaction]) -> float:
         return 0.0
 
     amounts = [t.amount for t in cleo_ai_txns]
-    std_dev = np.std(amounts)
+    try:
+        std_dev = float(np.std(amounts))
+    except Exception:
+        std_dev = 0.0
     if std_dev > 5 and max(amounts) > 10:
         return 1.0
     return 0.0
@@ -1108,8 +1135,11 @@ def is_brigit_repayment_like(transactions: list[Transaction]) -> float:
     dates = [parse_date(t.date) for t in repayments]
     intervals = [(dates[i] - dates[i - 1]).days for i in range(1, len(dates))]
 
-    std_dev_amt = float(np.std(amounts))
-    variability_score = std_dev_amt / (np.mean(amounts) + 1e-5)
+    try:
+        std_dev_amt = float(np.std(amounts))
+        variability_score = std_dev_amt / (float(np.mean(amounts)) + 1e-5)
+    except Exception:
+        variability_score = 0.0
     irregular_timing = sum(1 for d in intervals if d > 10 or d < 5) / len(intervals) if intervals else 0.0
     return min(1.0, 0.5 * float(variability_score) + 0.5 * float(irregular_timing))
 
@@ -1324,17 +1354,23 @@ def vendor_reliability_score(transactions: list[Transaction]) -> float:
     tx_density_score = min(txns_per_month / 5, 1.0)  # Cap at 5/month
 
     # Amount consistency (lower std = higher score)
-    amount_std = np.std(amounts)
-    amount_mean = np.mean(amounts)
-    amount_consistency = 1.0 / (1.0 + amount_std / (amount_mean + 1e-6))
+    try:
+        amount_std = float(np.std(amounts))
+        amount_mean = float(np.mean(amounts))
+        amount_consistency = 1.0 / (1.0 + amount_std / (amount_mean + 1e-6))
+    except Exception:
+        amount_consistency = 0.0
 
     # Interval consistency (in days)
     intervals = [(dates[i + 1] - dates[i]).days for i in range(len(dates) - 1)]
     if not intervals:
         return 0.0
-    interval_std = np.std(intervals)
-    interval_mean = np.mean(intervals)
-    interval_consistency = 1.0 / (1.0 + interval_std / (interval_mean + 1e-6))
+    try:
+        interval_std = float(np.std(intervals))
+        interval_mean = float(np.mean(intervals))
+        interval_consistency = 1.0 / (1.0 + interval_std / (interval_mean + 1e-6))
+    except Exception:
+        interval_consistency = 0.0
 
     # Combine scores with weights
     return float(0.4 * tx_density_score + 0.3 * amount_consistency + 0.3 * interval_consistency)
@@ -1380,9 +1416,12 @@ def temporal_pattern_stability_score(transactions: list[Transaction]) -> float:
         return 0.0
 
     # Temporal regularity (across all intervals)
-    mean_interval = np.mean(intervals)
-    std_interval = np.std(intervals)
-    temporal_score = 1.0 / (1.0 + std_interval / (mean_interval + 1e-6))
+    mean_interval = float(np.mean(intervals))
+    try:
+        std_interval = float(np.std(intervals))
+        temporal_score = 1.0 / (1.0 + std_interval / (mean_interval + 1e-6))
+    except Exception:
+        temporal_score = 0.0
 
     # Rolling pattern in recent activity (last 90 days)
     recent_intervals = [i for i in intervals if i <= 90]

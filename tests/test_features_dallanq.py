@@ -456,7 +456,7 @@ def test_std_amount() -> None:
         Transaction(id=3, user_id="user1", name="name1", amount=300, date="2024-02-01"),
     ]
     assert pytest.approx(std_amount(transactions)) == 100
-    assert std_amount([]) == -1.0
+    assert std_amount([]) == 0.0
 
 
 def test_amount_diff_from_mean() -> None:

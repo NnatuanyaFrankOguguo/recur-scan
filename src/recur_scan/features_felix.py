@@ -99,7 +99,10 @@ def get_variation_ratio(transaction: Transaction, all_transactions: list[Transac
 
     # Compute standard deviation (population std, same as np.std with ddof=0)
     variance = sum((x - mean_value) ** 2 for x in vendor_transactions) / len(vendor_transactions)
-    std_dev = math.sqrt(variance)  # Compute standard deviation
+    try:
+        std_dev = math.sqrt(variance)  # Compute standard deviation
+    except Exception:
+        std_dev = 0.0
 
     return float(std_dev / mean_value)  # Return CV
 

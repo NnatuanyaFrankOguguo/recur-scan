@@ -12,6 +12,7 @@ module from recur_scan.features to prepare the input data.
 import argparse
 import json
 import os
+import traceback
 from collections import defaultdict
 from typing import Any
 
@@ -32,7 +33,6 @@ from tqdm import tqdm
 from xgboost.callback import EarlyStopping
 
 from recur_scan.features import get_features
-from recur_scan.features_dallanq import get_new_features
 from recur_scan.transactions import (
     group_transactions,
     read_labeled_transactions,
@@ -43,18 +43,18 @@ from recur_scan.transactions import (
 # %%
 # configure the script
 
-use_precomputed_features = True
+use_precomputed_features = False
 model_type = "xgb"  # "rf" or "xgb"
 n_cv_folds = 5  # number of cross-validation folds, could be 5
 do_hyperparameter_optimization = False  # set to False to use the default hyperparameters
 search_type = "bayesian"  # "grid", "random", or "bayesian"
-n_hpo_iters = 100  # number of hyperparameter optimization iterations
+n_hpo_iters = 200  # number of hyperparameter optimization iterations
 n_jobs = -1  # number of jobs to run in parallel (set to 1 if your laptop gets too hot)
 recall_weight = 1.5  # weight for recall in custom scorer (higher values favor recall over precision)
 
-in_path = "training file"
-precomputed_features_path = "precomputed features file"
-out_dir = "output directory"
+in_path = "../../data/train.csv"
+precomputed_features_path = "../../data/train_features_selected.csv"
+out_dir = "../../data/training_out_selected"
 
 # %%
 # parse script arguments from command line
@@ -214,27 +214,34 @@ if use_precomputed_features:
 else:
     # feature generation is parallelized using joblib
     # Use backend that works better with shared memory
-    with joblib.parallel_backend("loky", n_jobs=n_jobs):
-        features = joblib.Parallel(verbose=1)(
-            joblib.delayed(get_features)(transaction, grouped_transactions[(transaction.user_id, transaction.name)])
-            for transaction in tqdm(transactions, desc="Processing transactions")
-        )
-    # save the features to a csv file
-    pd.DataFrame(features).to_csv(precomputed_features_path, index=False)
-    logger.info(f"Generated {len(features)} features")
+    try:
+        with joblib.parallel_backend("loky", n_jobs=n_jobs):
+            features = joblib.Parallel(
+                verbose=1,
+            )(
+                joblib.delayed(get_features)(transaction, grouped_transactions[(transaction.user_id, transaction.name)])
+                for transaction in tqdm(transactions, desc="Processing transactions")
+            )
+        # save the features to a csv file
+        pd.DataFrame(features).to_csv(precomputed_features_path, index=False)
+        logger.info(f"Generated {len(features)} features")
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
 
 # %%
 # add new features
-new_features = [
-    get_new_features(transaction, grouped_transactions[(transaction.user_id, transaction.name)])
-    for transaction in tqdm(transactions, desc="Processing transactions")
-]
+# new_features = [
+#     get_new_features(transaction, grouped_transactions[(transaction.user_id, transaction.name)])
+#     for transaction in tqdm(transactions, desc="Processing transactions")
+# ]
 
 # %%
 # add the new features to the existing features
-for i, new_transaction_features in enumerate(new_features):
-    features[i].update(new_transaction_features)  # type: ignore
-logger.info(f"Added {len(new_features[0])} new features")
+# for i, new_transaction_features in enumerate(new_features):
+#     features[i].update(new_transaction_features)  # type: ignore
+# logger.info(f"Added {len(new_features[0])} new features")
 
 # %%
 # convert all features to a matrix for machine learning
@@ -288,17 +295,17 @@ if do_hyperparameter_optimization:
 
         elif model_type == "xgb":
             params = {
-                "scale_pos_weight": trial.suggest_float("scale_pos_weight", 25, 45),
-                "max_depth": trial.suggest_int("max_depth", 4, 10),  # Shallower trees
-                "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.2, log=True),  # Slower learning
-                "n_estimators": trial.suggest_int("n_estimators", 500, 2000, step=100),
-                "min_child_weight": trial.suggest_int("min_child_weight", 1, 10),  # Higher to avoid noise
-                "reg_alpha": trial.suggest_float("reg_alpha", 0.2, 10.0, log=True),  # Stronger L1 regularization
-                "reg_lambda": trial.suggest_float("reg_lambda", 0.2, 10.0, log=True),  # Stronger L2 regularization
-                "subsample": trial.suggest_float("subsample", 0.2, 1.0),  # Stronger subsampling
-                "colsample_bytree": trial.suggest_float("colsample_bytree", 0.2, 1.0),  # Use fewer features per tree
-                "colsample_bylevel": trial.suggest_float("colsample_bylevel", 0.2, 1.0),  # Use fewer features per level
-                "gamma": trial.suggest_float("gamma", 0.1, 10.0, log=True),  # Higher min split gain
+                "scale_pos_weight": trial.suggest_float("scale_pos_weight", 27, 35),
+                "max_depth": trial.suggest_int("max_depth", 5, 9),  # Shallower trees
+                "learning_rate": trial.suggest_float("learning_rate", 0.05, 0.15, log=True),  # Slower learning
+                "n_estimators": trial.suggest_int("n_estimators", 100, 300),
+                "min_child_weight": trial.suggest_int("min_child_weight", 1, 7),  # Higher to avoid noise
+                "reg_alpha": trial.suggest_float("reg_alpha", 0.5, 1.5, log=True),  # Stronger L1 regularization
+                "reg_lambda": trial.suggest_float("reg_lambda", 0.5, 1.5, log=True),  # Stronger L2 regularization
+                "subsample": trial.suggest_float("subsample", 0.5, 1.0),  # Stronger subsampling
+                "colsample_bytree": trial.suggest_float("colsample_bytree", 0.5, 1.0),  # Use fewer features per tree
+                "colsample_bylevel": trial.suggest_float("colsample_bylevel", 0.5, 1.0),  # Use fewer features per level
+                "gamma": trial.suggest_float("gamma", 0.2, 1.0, log=True),  # Higher min split gain
             }
 
         # Perform cross-validation
@@ -433,17 +440,17 @@ else:
         }
     elif model_type == "xgb":
         best_params = {
-            "scale_pos_weight": 31.534975833187737,
-            "max_depth": 7,
-            "learning_rate": 0.10137917778203236,
-            "n_estimators": 231,
+            "scale_pos_weight": 31.511623420857994,
+            "max_depth": 6,
+            "learning_rate": 0.09955113631445212,
+            "n_estimators": 190,
             "min_child_weight": 4,
-            "reg_alpha": 0.7073284135654898,
-            "reg_lambda": 1.1203139343923778,
-            "subsample": 0.8565755247802751,
-            "colsample_bytree": 0.7187157831629986,
-            "colsample_bylevel": 0.8124505380843993,
-            "gamma": 0.5636326211235265,
+            "reg_alpha": 0.5965225376051358,
+            "reg_lambda": 1.394884431173184,
+            "subsample": 0.8610433179540073,
+            "colsample_bytree": 0.8821838433729198,
+            "colsample_bylevel": 0.718321027387164,
+            "gamma": 0.33021566887213594,
         }
 
 # %%
@@ -453,16 +460,20 @@ else:
 
 # now that we have the best hyperparameters, train a model with them
 
+# X_m = X[:, selected_features]
+X_m = X
+print(X_m.shape)
+
 logger.info(f"Training the {model_type} model with {best_params}")
 if model_type == "rf":
     model = RandomForestClassifier(random_state=42, **best_params, n_jobs=n_jobs)
-    model.fit(X, y)
+    model.fit(X_m, y)
 elif model_type == "xgb":
     # For the final XGBoost model, use early stopping with a validation set
     # Create a validation set using GroupShuffleSplit to respect user_id boundaries
     gss = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
-    train_idx, val_idx = next(gss.split(X, y, groups=user_ids))
-    X_train_final, X_val = X[train_idx], X[val_idx]
+    train_idx, val_idx = next(gss.split(X_m, y, groups=user_ids))
+    X_train_final, X_val = X_m[train_idx], X_m[val_idx]
     y_train_final = np.array([y[i] for i in train_idx])
     y_val = np.array([y[i] for i in val_idx])
 
@@ -491,12 +502,12 @@ elif model_type == "xgb":
     logger.info(f"Best score: {model.best_score}")
 
     # Now retrain on full dataset using the best number of iterations found
-    if hasattr(model, "best_iteration"):
-        # Retrain on full dataset with the optimal number of boosting rounds
-        best_params["n_estimators"] = model.best_iteration
-        model = xgb.XGBClassifier(random_state=42, **best_params, n_jobs=n_jobs)
-        model.fit(X, y)
-        logger.info(f"Retrained model with {model.n_estimators} estimators")
+    # if hasattr(model, "best_iteration"):
+    # Retrain on full dataset with the optimal number of boosting rounds
+    # best_params["n_estimators"] = model.best_iteration
+    # model = xgb.XGBClassifier(random_state=42, **best_params, n_jobs=n_jobs)
+    # model.fit(X, y)
+    # logger.info(f"Retrained model with {model.n_estimators} estimators")
 
 logger.info("Model trained")
 
@@ -580,6 +591,9 @@ print(X_cv.shape)
 
 # %%
 
+# n_estimators = 240
+# best_params["n_estimators"] = n_estimators
+
 cv = GroupKFold(n_splits=n_cv_folds)
 
 misclassified = []
@@ -648,6 +662,8 @@ print(f"Precision: {sum(precisions) / len(precisions):.3f}")
 print(f"Recall: {sum(recalls) / len(recalls):.3f}")
 print(f"F1 Score: {sum(f1s) / len(f1s):.3f}")
 print(f"Weighted Score (recall x{recall_weight}): {sum(weighted_scores) / len(weighted_scores):.3f}")
+print(f"False positives: {len(false_positives)}")
+print(f"False negatives: {len(false_negatives)}")
 
 # %%
 # save the misclassified transactions to a csv file in the output directory
@@ -655,12 +671,6 @@ print(f"Weighted Score (recall x{recall_weight}): {sum(weighted_scores) / len(we
 logger.info(f"Found {len(misclassified)} misclassified transactions (variance errors)")
 
 write_transactions(os.path.join(out_dir, "variance_errors.csv"), misclassified, y)
-
-# %%
-# count false positives and false negatives
-
-print(f"False positives: {len(false_positives)}")
-print(f"False negatives: {len(false_negatives)}")
 
 # %%
 # count the number of misclassified transactions by transaction.name
@@ -747,6 +757,7 @@ if model_type == "rf":
     model = RandomForestClassifier(random_state=42, **best_params, n_jobs=n_jobs)
 elif model_type == "xgb":
     model = xgb.XGBClassifier(random_state=42, **best_params, n_jobs=n_jobs)
+custom_scorer = make_scorer(weighted_precision_recall_score)
 
 # First split data into train/test sets respecting user grouping
 logger.info("Splitting data into train/test sets respecting user grouping")
@@ -759,7 +770,7 @@ y_test = np.array([y[i] for i in test_idx])
 user_ids_train = [user_ids[i] for i in train_idx]
 
 # Calculate step size as percentage of features (more efficient)
-step_pct = 0.05
+step_pct = 0.005
 step_size = max(1, int(step_pct * X.shape[1]))  # 1% of features per step
 
 # RFECV performs recursive feature elimination with cross-validation
@@ -808,7 +819,7 @@ logger.info(f"Saved {len(eliminated_features)} eliminated features to {eliminate
 # Plot the CV scores vs number of features
 plt.figure(figsize=(10, 6))
 plt.plot(range(1, len(rfecv.cv_results_["mean_test_score"]) + 1), rfecv.cv_results_["mean_test_score"], "o-")
-plt.xlabel("Number of features")
+plt.xlabel(f"Number of features (multiply by {step_size})")
 plt.ylabel("Cross-validation accuracy")
 plt.title("Accuracy vs. Number of Features")
 plt.grid(True)

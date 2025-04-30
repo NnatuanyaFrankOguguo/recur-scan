@@ -102,6 +102,8 @@ def get_interval_variance_coefficient(transaction: Transaction, all_transactions
         (datetime.strptime(t2.date, "%Y-%m-%d") - datetime.strptime(t1.date, "%Y-%m-%d")).days
         for t1, t2 in pairwise(same_transactions)
     ]
+    if len(intervals) <= 1:
+        return 1.0
     try:
         mean_interval = statistics.mean(intervals)
         if mean_interval == 0:
@@ -139,6 +141,8 @@ def get_stddev_days_between_same_merchant_amount(
         (datetime.strptime(t2.date, "%Y-%m-%d").date() - datetime.strptime(t1.date, "%Y-%m-%d").date()).days
         for t1, t2 in pairwise(same_transactions)
     ]
+    if len(intervals) <= 1:
+        return 0.0
     try:
         return statistics.stdev(intervals)
     except statistics.StatisticsError:
@@ -347,7 +351,12 @@ def get_hurst_exponent(transaction: Transaction, all_transactions: list[Transact
     mean = sum(intervals) / n
     cumulative_deviation: list[float] = [sum(intervals[: i + 1]) - (i + 1) * mean for i in range(n)]
     r = max(cumulative_deviation) - min(cumulative_deviation)
-    s = statistics.stdev(intervals)
+    if len(intervals) <= 1:
+        return 0.0
+    try:
+        s = statistics.stdev(intervals)
+    except Exception:
+        return 0.0
 
     if s == 0:
         return 0.5
@@ -407,9 +416,12 @@ def get_amount_zscore(transaction: Transaction, all_transactions: list[Transacti
     user_amounts = [t.amount for t in all_transactions if t.user_id == transaction.user_id]
     if len(user_amounts) < 2:
         return 0.0
-    mean = statistics.mean(user_amounts)
-    stdev = statistics.stdev(user_amounts)
-    return (transaction.amount - mean) / stdev if stdev > 0 else 0.0
+    try:
+        mean = statistics.mean(user_amounts)
+        stdev = statistics.stdev(user_amounts)
+        return (transaction.amount - mean) / stdev if stdev > 0 else 0.0
+    except Exception:
+        return 0.0
 
 
 def is_amount_outlier(transaction: Transaction, all_transactions: list[Transaction]) -> bool:
@@ -420,7 +432,12 @@ def is_amount_outlier(transaction: Transaction, all_transactions: list[Transacti
 def get_stddev_amount_same_merchant(transaction: Transaction, all_transactions: list[Transaction]) -> float:
     """How variable are amounts at this merchant for the user?"""
     same = [t.amount for t in all_transactions if t.user_id == transaction.user_id and t.name == transaction.name]
-    return statistics.stdev(same) if len(same) >= 2 else 0.0
+    if len(same) <= 1:
+        return 0.0
+    try:
+        return statistics.stdev(same)
+    except Exception:
+        return 0.0
 
 
 def get_avg_days_between_same_merchant(transaction: Transaction, all_transactions: list[Transaction]) -> float:
@@ -467,9 +484,12 @@ def get_amount_coefficient_of_variation(transaction: Transaction, all_transactio
     user_amounts = [t.amount for t in all_transactions if t.user_id == transaction.user_id]
     if len(user_amounts) < 2:
         return 0.0
-    mean = statistics.mean(user_amounts)
-    stdev = statistics.stdev(user_amounts)
-    return (stdev / mean) if mean > 0 else 0.0
+    try:
+        mean = statistics.mean(user_amounts)
+        stdev = statistics.stdev(user_amounts)
+        return (stdev / mean) if mean > 0 else 0.0
+    except Exception:
+        return 0.0
 
 
 def get_unique_merchants_count(transaction: Transaction, all_transactions: list[Transaction]) -> int:
@@ -518,12 +538,15 @@ def get_recurrence_score_by_amount(
     dates = sorted(datetime.strptime(t.date, "%Y-%m-%d").date() for t in similar_transactions)
     gaps = [(dates[i] - dates[i - 1]).days for i in range(1, len(dates))]
 
-    if not gaps:
+    if len(gaps) <= 1:
         return 0.0
 
     # Basic statistics
-    mean_gap = statistics.mean(gaps)
-    std_dev = statistics.stdev(gaps) if len(gaps) > 1 else 0.0
+    try:
+        mean_gap = statistics.mean(gaps)
+        std_dev = statistics.stdev(gaps) if len(gaps) > 1 else 0.0
+    except Exception:
+        return 0.0
 
     # Compare mean gap to common frequencies
     common_frequencies = [7, 14, 28, 30, 31]
@@ -555,7 +578,10 @@ def compare_recent_to_historical_average(transaction: Transaction, all_transacti
     # Calculate historical mean and standard deviation
     amounts = [t.amount for t in past_transactions]
     mean = statistics.mean(amounts)
-    stdev = statistics.stdev(amounts) if len(amounts) > 1 else 0.0
+    try:
+        stdev = statistics.stdev(amounts)
+    except Exception:
+        stdev = 0.0
 
     # If standard deviation is very low (i.e., consistent values), check for closeness
     if stdev == 0:
@@ -957,9 +983,12 @@ def get_interval_variance_ratio(transaction: Transaction, all_transactions: list
     if not intervals:
         return 0.0
 
-    avg_interval = statistics.mean(intervals)
-    std_interval = statistics.stdev(intervals) if len(intervals) > 1 else 0.0
-    return std_interval / avg_interval if avg_interval else 0.0
+    try:
+        avg_interval = statistics.mean(intervals)
+        std_interval = statistics.stdev(intervals) if len(intervals) > 1 else 0.0
+        return std_interval / avg_interval if avg_interval else 0.0
+    except Exception:
+        return 0.0
 
 
 def get_day_of_month_consistency(transaction: Transaction, all_transactions: list[Transaction]) -> bool:
@@ -1005,7 +1034,12 @@ def get_amount_drift_slope(transaction: Transaction, all_transactions: list[Tran
         return 0.0
     dates_ord = [datetime.strptime(t.date, "%Y-%m-%d").toordinal() for t in same_amt_sorted]
     amounts = [t.amount for t in same_amt_sorted]
-    return float(np.polyfit(dates_ord, amounts, 1)[0])
+    if len(dates_ord) <= 1 or len(set(amounts)) == 1:
+        return 0.0
+    try:
+        return float(np.polyfit(dates_ord, amounts, 1)[0])
+    except Exception:
+        return 0.0
 
 
 def get_burstiness_ratio(transaction: Transaction, all_transactions: list[Transaction]) -> float:

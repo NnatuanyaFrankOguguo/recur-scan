@@ -30,8 +30,13 @@ def detect_sequence_patterns(
         (parse_date(vendor_txs_sorted[i].date) - parse_date(vendor_txs_sorted[i - 1].date)).days
         for i in range(1, len(vendor_txs_sorted))
     ]
-    avg_interval = statistics.mean(intervals)
-    stdev_interval = statistics.stdev(intervals) if len(intervals) > 1 else 0
+    if len(intervals) <= 1:
+        return {"sequence_confidence": 0.0, "sequence_pattern": -1, "sequence_length": 0}
+    try:
+        avg_interval = statistics.mean(intervals)
+        stdev_interval = statistics.stdev(intervals) if len(intervals) > 1 else 0
+    except Exception:
+        return {"sequence_confidence": 0.0, "sequence_pattern": -1, "sequence_length": 0}
 
     patterns = {1: 7, 2: 30, 3: 365}  # 1: weekly, 2: monthly, 3: yearly
     best_pattern, best_confidence = -1, 0.0
@@ -88,9 +93,12 @@ def get_recurring_transaction_confidence(transaction: Transaction, all_transacti
     if len(similar_transactions) < 2:
         amount_stability = 1.0  # High variability if fewer than 2 transactions
     else:
-        mean = sum(similar_transactions) / len(similar_transactions)
-        stdev = statistics.stdev(similar_transactions)
-        amount_stability = stdev / mean if mean != 0 else 1.0
+        try:
+            mean = sum(similar_transactions) / len(similar_transactions)
+            stdev = statistics.stdev(similar_transactions)
+            amount_stability = stdev / mean if mean != 0 else 1.0
+        except Exception:
+            amount_stability = 1.0
 
     # 2. Interval Regularity
     similar_dates = [
@@ -99,10 +107,13 @@ def get_recurring_transaction_confidence(transaction: Transaction, all_transacti
     if len(similar_dates) < 2:
         interval_regularities = -1.0  # No intervals if fewer than 2 transactions
     else:
-        intervals = [(similar_dates[i] - similar_dates[i - 1]).days for i in range(1, len(similar_dates))]
-        interval_regularities = (
-            -1.0 if len(intervals) < 2 else statistics.stdev(intervals)
-        )  # Default value for insufficient data
+        try:
+            intervals = [(similar_dates[i] - similar_dates[i - 1]).days for i in range(1, len(similar_dates))]
+            interval_regularities = (
+                -1.0 if len(intervals) < 2 else statistics.stdev(intervals)
+            )  # Default value for insufficient data
+        except Exception:
+            interval_regularities = -1.0
 
     # 3. Transaction Frequency
     transaction_date = parse_date(transaction.date)

@@ -54,7 +54,10 @@ def get_day_of_month_variability(
             adjusted_days.extend([day, day - 31])
         else:
             adjusted_days.append(day)
-    return np.std(adjusted_days)  # type: ignore
+    try:
+        return np.std(adjusted_days)  # type: ignore
+    except Exception:
+        return 31.0
 
 
 def get_recurrence_confidence(

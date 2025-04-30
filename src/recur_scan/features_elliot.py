@@ -196,7 +196,10 @@ def get_transaction_amount_variance(txn: dict, txns: list[dict]) -> float:
     vals = [t["amount"] for t in txns if t["name"] == txn["name"]]
     if len(vals) <= 1:
         return 0.0
-    return float(statistics.stdev(vals))
+    try:
+        return float(statistics.stdev(vals))
+    except Exception:
+        return 0.0
 
 
 def most_common_interval(all_transactions: list[Transaction]) -> int:

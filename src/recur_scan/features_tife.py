@@ -35,7 +35,10 @@ def get_transaction_frequency(all_transactions: list[Transaction]) -> float:
 
 def get_interval_consistency(all_transactions: list[Transaction]) -> float:
     _, intervals = _precompute_dates_and_intervals(all_transactions)
-    return float(np.std(intervals)) if intervals else 0.0
+    try:
+        return float(np.std(intervals)) if intervals else 0.0
+    except Exception:
+        return 0.0
 
 
 def get_amount_variability(all_transactions: list[Transaction]) -> float:
@@ -43,7 +46,10 @@ def get_amount_variability(all_transactions: list[Transaction]) -> float:
         return 0.0
     amounts = np.fromiter((t.amount for t in all_transactions), float)
     mean_amount = float(np.mean(amounts))
-    return float(np.std(amounts) / mean_amount) if mean_amount > 0 else 0.0
+    try:
+        return float(np.std(amounts) / mean_amount) if mean_amount > 0 else 0.0
+    except Exception:
+        return 0.0
 
 
 def get_amount_range(all_transactions: list[Transaction]) -> float:
@@ -69,8 +75,11 @@ def get_interval_mode(all_transactions: list[Transaction]) -> float:
 def get_normalized_interval_consistency(all_transactions: list[Transaction]) -> float:
     _, intervals = _precompute_dates_and_intervals(all_transactions)
     mean_interval = float(np.mean(intervals)) if intervals else 0.0
-    std_dev = float(np.std(intervals)) if intervals else 0.0
-    return std_dev / mean_interval if mean_interval > 0 else 0.0
+    try:
+        std_dev = float(np.std(intervals)) if intervals else 0.0
+        return std_dev / mean_interval if mean_interval > 0 else 0.0
+    except Exception:
+        return 0.0
 
 
 def get_days_since_last_same_amount(transaction: Transaction, all_transactions: list[Transaction]) -> float:
@@ -109,8 +118,11 @@ def get_amount_stability_score(all_transactions: list[Transaction]) -> float:
         return 0.0
     amounts = np.fromiter((t.amount for t in all_transactions), float)
     mean = np.mean(amounts)
-    std = np.std(amounts)
-    return sum(1 for a in amounts if abs(a - mean) <= std) / len(amounts) if std > 0 else 1.0
+    try:
+        std = np.std(amounts)
+        return sum(1 for a in amounts if abs(a - mean) <= std) / len(amounts) if std > 0 else 1.0
+    except Exception:
+        return 0.0
 
 
 def get_dominant_interval_strength(all_transactions: list[Transaction]) -> float:
@@ -203,11 +215,16 @@ def get_merchant_recurrence_score(transaction: Transaction, all_transactions: li
     if all(interval == 0 for interval in intervals):
         return 0.0
     mean_interval = float(np.mean(intervals))
-    std_interval = float(np.std(intervals, ddof=0))  # Explicitly use population standard deviation
-    consistency = 1.0 - (std_interval / mean_interval if mean_interval > 0 else 0.0)
-    frequency = len(merchant_transactions) / len(all_transactions)
-    score = consistency * frequency
-    return score
+    if len(intervals) <= 1:
+        return 0.0
+    try:
+        std_interval = float(np.std(intervals, ddof=0))  # Explicitly use population standard deviation
+        consistency = 1.0 - (std_interval / mean_interval if mean_interval > 0 else 0.0)
+        frequency = len(merchant_transactions) / len(all_transactions)
+        score = consistency * frequency
+        return score
+    except Exception:
+        return 0.0
 
 
 def get_day_of_month_consistency(all_transactions: list[Transaction]) -> float:
@@ -240,7 +257,10 @@ def get_transaction_interval(transaction: Transaction, all_transactions: list[Tr
     if not intervals:
         return 0.0
     mean_interval = float(np.mean(intervals))
-    std_interval = float(np.std(intervals))
+    try:
+        std_interval = float(np.std(intervals))
+    except Exception:
+        std_interval = 0.0
     if mean_interval == 0 or std_interval == 0:
         return 0.0
     if std_interval / mean_interval > 0.5:
@@ -259,7 +279,12 @@ def get_amount_deviation(transaction: Transaction, all_transactions: list[Transa
         return 0.0
     amounts = np.fromiter((t.amount for t in merchant_transactions), float)
     mean_amount = float(np.mean(amounts))
-    std_amount = float(np.std(amounts, ddof=0))  # Use population standard deviation
+    if len(amounts) <= 1:
+        return 0.0
+    try:
+        std_amount = float(np.std(amounts, ddof=0))  # Use population standard deviation
+    except Exception:
+        std_amount = 0.0
     if std_amount == 0 or np.isnan(std_amount):
         return 0.0
     return float((transaction.amount - mean_amount) / std_amount)
@@ -287,7 +312,12 @@ def get_user_spending_profile(transaction: Transaction, all_transactions: list[T
         return 0.0
     amounts = np.fromiter((t.amount for t in user_transactions), float)
     mean_amount = float(np.mean(amounts))
-    std_amount = float(np.std(amounts, ddof=0))  # Use population standard deviation
+    if len(amounts) <= 1:
+        return 0.0
+    try:
+        std_amount = float(np.std(amounts, ddof=0))  # Use population standard deviation
+    except Exception:
+        std_amount = 0.0
     if std_amount == 0 or np.isnan(std_amount):
         return 0.0
     return float((transaction.amount - mean_amount) / std_amount)
@@ -316,7 +346,10 @@ def get_merchant_recurrence_consistency(transaction: Transaction, all_transactio
     if not intervals:
         return 0.0
     mean_interval = float(np.mean(intervals))
-    std_interval = float(np.std(intervals))
+    try:
+        std_interval = float(np.std(intervals))
+    except Exception:
+        std_interval = 0.0
     current_date = parse_date(transaction.date)
     prior_dates = [d for d in dates if d < current_date]
     if not prior_dates:

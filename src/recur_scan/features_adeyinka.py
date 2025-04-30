@@ -158,8 +158,10 @@ def get_transaction_amount_variance(transaction: Transaction, all_transactions: 
 
     if len(vendor_txns) <= 1:
         return 0.0  # No variance if there's only one transaction
-
-    return statistics.stdev(vendor_txns)
+    try:
+        return statistics.stdev(vendor_txns)
+    except Exception:
+        return 0.0
 
 
 def get_outlier_score(transaction: Transaction, all_transactions: list[Transaction]) -> float:

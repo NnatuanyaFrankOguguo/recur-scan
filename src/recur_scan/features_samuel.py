@@ -55,7 +55,12 @@ def get_transaction_frequency(transaction: Transaction, all_transactions: list[T
 def get_amount_std_dev(transaction: Transaction, all_transactions: list[Transaction]) -> float:
     """Get standard deviation of amounts for similar transactions."""
     amounts = [t.amount for t in all_transactions if t.name.lower().strip() == transaction.name.lower().strip()]
-    return float(np.std(amounts, ddof=0)) if amounts else 0.0
+    if len(amounts) <= 1:
+        return 0.0
+    try:
+        return float(np.std(amounts, ddof=0)) if amounts else 0.0
+    except Exception:
+        return 0.0
 
 
 def get_median_transaction_amount(transaction: Transaction, all_transactions: list[Transaction]) -> float:

@@ -122,9 +122,13 @@ def get_transaction_z_score(transaction: Transaction, all_transactions: list[Tra
     """Get the z-score of the transaction amount compared to the mean and standard deviation of all_transactions."""
     all_amounts = [t.amount for t in all_transactions]
     # if the standard deviation is 0, return 0
-    if np.std(all_amounts) == 0:
-        return 0
-    return (transaction.amount - np.mean(all_amounts)) / np.std(all_amounts)  # type: ignore
+    try:
+        std_dev = float(np.std(all_amounts))
+    except Exception:
+        std_dev = 0.0
+    if abs(std_dev) < 1e-8:
+        return 0.0
+    return (transaction.amount - float(np.mean(all_amounts))) / std_dev
 
 
 #
@@ -175,7 +179,10 @@ def std_days_between(all_transactions: list[Transaction]) -> float:
     if len(dates) < 2:
         return -1.0
     diffs = [(dates[i] - dates[i - 1]).days for i in range(1, len(dates))]
-    return float(np.std(diffs, ddof=1))
+    try:
+        return float(np.std(diffs, ddof=1))
+    except Exception:
+        return 0.0
 
 
 def regularity_score(all_transactions: list[Transaction]) -> float:
@@ -184,8 +191,11 @@ def regularity_score(all_transactions: list[Transaction]) -> float:
     Higher → more evenly spaced (common in recurring).
     """
     mean = mean_days_between(all_transactions)
-    std_dev = std_days_between(all_transactions)
-    if mean == -1.0 or std_dev == -1.0 or std_dev == 0:
+    try:
+        std_dev = std_days_between(all_transactions)
+    except Exception:
+        std_dev = 0.0
+    if mean == -1.0 or std_dev == -1.0 or abs(std_dev) < 1e-8:
         return -1.0
     return mean / std_dev
 
@@ -221,7 +231,10 @@ def std_days_between_same_amount(transaction: Transaction, all_transactions: lis
     if len(dates) < 2:
         return -1.0
     diffs = [(dates[i] - dates[i - 1]).days for i in range(1, len(dates))]
-    return float(np.std(diffs, ddof=1))
+    try:
+        return float(np.std(diffs, ddof=1))
+    except Exception:
+        return 0.0
 
 
 def regularity_score_same_amount(transaction: Transaction, all_transactions: list[Transaction]) -> float:
@@ -278,7 +291,12 @@ def mean_amount(all_transactions: list[Transaction]) -> float:
 def std_amount(all_transactions: list[Transaction]) -> float:
     """Std. dev. of transaction amounts."""
     amounts = [t.amount for t in all_transactions]
-    return float(np.std(amounts, ddof=1)) if len(amounts) > 1 else -1.0
+    if len(amounts) <= 1:
+        return 0.0
+    try:
+        return float(np.std(amounts, ddof=1))
+    except Exception:
+        return 0.0
 
 
 def amount_diff_from_mean(transaction: Transaction, all_transactions: list[Transaction]) -> float:

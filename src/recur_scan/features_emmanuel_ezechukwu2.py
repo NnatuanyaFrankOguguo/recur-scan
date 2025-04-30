@@ -110,7 +110,7 @@ def get_recurrence_patterns(transaction: Transaction, transactions: list[Transac
                 "is_semimonthly_emmanuel2",
                 "is_monthly_emmanuel2",
                 "is_bimonthly_emmanuel2",
-                "is_quarterly_emmanuel2",
+                # "is_quarterly_emmanuel2",
                 "is_annual_emmanuel2",
                 "avg_days_between_emmanuel2",
                 "std_days_between_emmanuel2",
@@ -132,7 +132,7 @@ def get_recurrence_patterns(transaction: Transaction, transactions: list[Transac
         "is_semimonthly_emmanuel2": int(any(d in {14, 15, 16, 17} for d in date_diffs)),
         "is_monthly_emmanuel2": int(any(27 <= d <= 31 for d in date_diffs)),
         "is_bimonthly_emmanuel2": int(any(55 <= d <= 65 for d in date_diffs)),
-        "is_quarterly_emmanuel2": int(any(85 <= d <= 95 for d in date_diffs)),
+        # "is_quarterly_emmanuel2": int(any(85 <= d <= 95 for d in date_diffs)),
         "is_annual_emmanuel2": int(any(360 <= d <= 370 for d in date_diffs)),
     }
 
@@ -256,18 +256,19 @@ def get_user_behavior_features(transaction: Transaction, transactions: list[Tran
 
     if not user_txns:
         return {
-            "user_avg_spent_emmanuel2": 0.0,
+            # "user_avg_spent_emmanuel2": 0.0,
             "user_total_spent_emmanuel2": 0.0,
-            "user_subscription_count_emmanuel2": 0,
+            # "user_subscription_count_emmanuel2": 0,
         }
 
     # Ensure subscriptions are only counted for the given user
-    user_subscription_count = sum(t.name in RECURRING_VENDORS for t in transactions if t.user_id == transaction.user_id)
+    # user_subscription_count = sum(t.name in RECURRING_VENDORS for t in transactions
+    #                               if t.user_id == transaction.user_id)
 
     return {
-        "user_avg_spent_emmanuel2": mean(user_txns),
+        # "user_avg_spent_emmanuel2": mean(user_txns),
         "user_total_spent_emmanuel2": sum(user_txns),
-        "user_subscription_count_emmanuel2": user_subscription_count,
+        # "user_subscription_count_emmanuel2": user_subscription_count,
     }
 
 
@@ -276,14 +277,17 @@ def get_refund_features(transaction: Transaction, transactions: list[Transaction
     refunds = [t for t in transactions if t.amount == -transaction.amount]
 
     if not refunds:
-        return {"refund_rate_emmanuel2": 0.0, "avg_refund_time_lag_emmanuel2": 0.0}
+        return {
+            # "refund_rate_emmanuel2": 0.0,
+            "avg_refund_time_lag_emmanuel2": 0.0,
+        }
 
     refund_time_lags = [
         (datetime.strptime(t.date, "%Y-%m-%d") - datetime.strptime(transaction.date, "%Y-%m-%d")).days for t in refunds
     ]
 
     return {
-        "refund_rate_emmanuel2": len(refunds) / len(transactions),
+        # "refund_rate_emmanuel2": len(refunds) / len(transactions),
         "avg_refund_time_lag_emmanuel2": mean(refund_time_lags) if refund_time_lags else 0.0,
     }
 

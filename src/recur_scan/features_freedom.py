@@ -47,7 +47,10 @@ def get_periodicity_confidence(
         return 0.0
 
     avg_delta = np.mean(deltas)
-    std_delta = np.std(deltas)
+    try:
+        std_delta = float(np.std(deltas))
+    except Exception:
+        std_delta = 0.0
 
     # Score based on how close average is to expected period and how consistent
     period_score = 1 - min(float(abs(avg_delta - expected_period) / expected_period), 1)
