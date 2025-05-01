@@ -153,7 +153,10 @@ def vendor_recurrence_trend(all_transactions: list[Transaction]) -> float:
         return 0.0
 
     x = np.arange(len(counts))
-    slope, _ = np.polyfit(x, counts, 1)
+    try:
+        slope, _ = np.polyfit(x, counts, 1)
+    except Exception:
+        slope = 0.0
 
     return max(float(slope), 0.0)  # Ensure non-negative slope
 

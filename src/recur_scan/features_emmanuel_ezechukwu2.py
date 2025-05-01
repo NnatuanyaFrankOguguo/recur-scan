@@ -1,9 +1,7 @@
 from datetime import datetime
 from statistics import mean, stdev
 
-import numpy as np
 from fuzzywuzzy import process
-from sklearn.cluster import KMeans
 
 from recur_scan.transactions import Transaction
 
@@ -106,14 +104,14 @@ def get_recurrence_patterns(transaction: Transaction, transactions: list[Transac
         return {
             key: 0
             for key in [
-                "is_biweekly_emmanuel2",
-                "is_semimonthly_emmanuel2",
-                "is_monthly_emmanuel2",
-                "is_bimonthly_emmanuel2",
+                # "is_biweekly_emmanuel2",
+                # "is_semimonthly_emmanuel2",
+                # "is_monthly_emmanuel2",
+                # "is_bimonthly_emmanuel2",
                 # "is_quarterly_emmanuel2",
-                "is_annual_emmanuel2",
-                "avg_days_between_emmanuel2",
-                "std_days_between_emmanuel2",
+                # "is_annual_emmanuel2",
+                # "avg_days_between_emmanuel2",
+                # "std_days_between_emmanuel2",
                 "recurrence_score_emmanuel2",
             ]
         }
@@ -122,24 +120,24 @@ def get_recurrence_patterns(transaction: Transaction, transactions: list[Transac
     date_diffs = [(dates[i + 1] - dates[i]).days for i in range(len(dates) - 1)]
 
     avg_days_between = mean(date_diffs)
-    std_days_between = stdev(date_diffs) if len(date_diffs) > 1 else 0.0
+    # std_days_between = stdev(date_diffs) if len(date_diffs) > 1 else 0.0
 
     # Weighted recurrence score
     recurrence_score = sum(1 / (1 + abs(diff - avg_days_between)) for diff in date_diffs) / len(date_diffs)
 
-    recurrence_flags = {
-        "is_biweekly_emmanuel2": int(14 in date_diffs),
-        "is_semimonthly_emmanuel2": int(any(d in {14, 15, 16, 17} for d in date_diffs)),
-        "is_monthly_emmanuel2": int(any(27 <= d <= 31 for d in date_diffs)),
-        "is_bimonthly_emmanuel2": int(any(55 <= d <= 65 for d in date_diffs)),
-        # "is_quarterly_emmanuel2": int(any(85 <= d <= 95 for d in date_diffs)),
-        "is_annual_emmanuel2": int(any(360 <= d <= 370 for d in date_diffs)),
-    }
+    # recurrence_flags = {
+    # "is_biweekly_emmanuel2": int(14 in date_diffs),
+    # "is_semimonthly_emmanuel2": int(any(d in {14, 15, 16, 17} for d in date_diffs)),
+    # "is_monthly_emmanuel2": int(any(27 <= d <= 31 for d in date_diffs)),
+    # "is_bimonthly_emmanuel2": int(any(55 <= d <= 65 for d in date_diffs)),
+    # "is_quarterly_emmanuel2": int(any(85 <= d <= 95 for d in date_diffs)),
+    # "is_annual_emmanuel2": int(any(360 <= d <= 370 for d in date_diffs)),
+    # }
 
     return {
-        **recurrence_flags,
-        "avg_days_between_emmanuel2": avg_days_between,
-        "std_days_between_emmanuel2": std_days_between,
+        # **recurrence_flags,
+        # "avg_days_between_emmanuel2": avg_days_between,
+        # "std_days_between_emmanuel2": std_days_between,
         "recurrence_score_emmanuel2": recurrence_score,
     }
 
@@ -150,7 +148,7 @@ def get_recurring_consistency_score(transaction: Transaction, transactions: list
     merchant_txns = [t for t in transactions if t.name == transaction.name]
 
     if len(merchant_txns) < 2:
-        return {"recurring_consistency_score": 0.0}  # Not enough data to determine recurrence
+        return {"recurring_consistency_score_emmanuel2": 0.0}  # Not enough data to determine recurrence
 
     dates = sorted(datetime.strptime(t.date, "%Y-%m-%d") for t in merchant_txns)
     date_diffs = [(dates[i + 1] - dates[i]).days for i in range(len(dates) - 1)]
@@ -233,20 +231,20 @@ def get_amount_features(transaction: Transaction, transactions: list[Transaction
     # Handle edge cases for KMeans clustering
     if len(vendor_txns) < 3 or len(set(vendor_txns)) == 1:
         return {
-            "is_fixed_amount_recurring_emmanuel2": int(max(vendor_txns) <= min(vendor_txns) * 1.02),
+            # "is_fixed_amount_recurring_emmanuel2": int(max(vendor_txns) <= min(vendor_txns) * 1.02),
             "amount_fluctuation_emmanuel2": price_fluctuation,
-            "price_cluster_emmanuel2": -1,  # Indicates clustering was not performed
+            # "price_cluster_emmanuel2": -1,  # Indicates clustering was not performed
         }
 
     # Perform KMeans clustering
-    amounts = np.array(vendor_txns).reshape(-1, 1)
-    kmeans = KMeans(n_clusters=min(3, len(set(vendor_txns))), random_state=42).fit(amounts)
-    price_cluster = kmeans.predict([[transaction.amount]])[0]
+    # amounts = np.array(vendor_txns).reshape(-1, 1)
+    # kmeans = KMeans(n_clusters=min(3, len(set(vendor_txns))), random_state=42).fit(amounts)
+    # price_cluster = kmeans.predict([[transaction.amount]])[0]
 
     return {
-        "is_fixed_amount_recurring_emmanuel2": int(max(vendor_txns) <= min(vendor_txns) * 1.02),
+        # "is_fixed_amount_recurring_emmanuel2": int(max(vendor_txns) <= min(vendor_txns) * 1.02),
         "amount_fluctuation_emmanuel2": price_fluctuation,
-        "price_cluster_emmanuel2": price_cluster,
+        # "price_cluster_emmanuel2": price_cluster,
     }
 
 

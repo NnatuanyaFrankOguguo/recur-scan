@@ -2,7 +2,7 @@ import math
 import re
 import statistics
 from datetime import datetime
-from statistics import mean, stdev
+from statistics import mean
 
 import numpy as np
 
@@ -193,9 +193,9 @@ def get_transaction_intervals(transactions: list[Transaction]) -> dict[str, floa
     if len(transactions) < 2:
         return {
             "avg_days_between_transactions_felix": 0.0,
-            "std_dev_days_between_transactions_felix": 0.0,
+            # "std_dev_days_between_transactions_felix": 0.0,
             "monthly_recurrence_felix": 0,
-            "same_weekday_felix": 0,
+            # "same_weekday_felix": 0,
             "same_amount_felix": 0,
         }
     # Sort transactions by date
@@ -209,7 +209,7 @@ def get_transaction_intervals(transactions: list[Transaction]) -> dict[str, floa
 
     # compute average and standard deviation of transaction intervals
     avg_days = mean(intervals) if intervals else 0.0
-    std_dev_days = stdev(intervals) if len(intervals) > 1 else 0.0
+    # std_dev_days = stdev(intervals) if len(intervals) > 1 else 0.0
 
     # check for flexible monthly recurrence (±7 days)
     monthly_count = sum(
@@ -220,8 +220,8 @@ def get_transaction_intervals(transactions: list[Transaction]) -> dict[str, floa
     monthly_recurrence = monthly_count / len(intervals) if intervals else 0.0
 
     # check if transactions occur on the same weekday
-    weekdays = [date.weekday() for date in dates]  # Monday = 0, Sunday = 6
-    same_weekday = 1 if len(set(weekdays)) == 1 else 0  # 1 if all transactions happen on the same weekday
+    # weekdays = [date.weekday() for date in dates]  # Monday = 0, Sunday = 6
+    # same_weekday = 1 if len(set(weekdays)) == 1 else 0  # 1 if all transactions happen on the same weekday
 
     # check if payment amounts are within ±5% of each other
     amounts = [trans.amount for trans in transactions]
@@ -234,9 +234,9 @@ def get_transaction_intervals(transactions: list[Transaction]) -> dict[str, floa
 
     return {
         "avg_days_between_transactions_felix": avg_days,
-        "std_dev_days_between_transactions_felix": std_dev_days,
+        # "std_dev_days_between_transactions_felix": std_dev_days,
         "monthly_recurrence_felix": monthly_recurrence,
-        "same_weekday_felix": same_weekday,
+        # "same_weekday_felix": same_weekday,
         "same_amount_felix": consistent_amount,
     }
 

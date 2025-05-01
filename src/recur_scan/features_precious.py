@@ -184,8 +184,8 @@ def get_additional_features(
     trans_date = datetime.datetime.strptime(transaction.date, "%Y-%m-%d").date()
     day_of_week: int = trans_date.weekday()
     day_of_month: int = trans_date.day
-    is_weekend: bool = day_of_week >= 5
-    is_end_of_month: bool = day_of_month >= 28
+    # is_weekend: bool = day_of_week >= 5
+    # is_end_of_month: bool = day_of_month >= 28
     same_merchant_transactions = sorted(
         [t for t in all_transactions if t.name == transaction.name], key=lambda x: x.date
     )
@@ -201,7 +201,7 @@ def get_additional_features(
         intervals.append((d2 - d1).days)
     min_interval: int = min(intervals) if intervals else 0
     max_interval: int = max(intervals) if intervals else 0
-    merchant_total_count: int = sum(1 for t in all_transactions if t.name == transaction.name)
+    # merchant_total_count: int = sum(1 for t in all_transactions if t.name == transaction.name)
     merchant_recent_count: int = sum(
         1
         for t in all_transactions
@@ -224,12 +224,12 @@ def get_additional_features(
     return {
         "day_of_week_precious": day_of_week,
         "day_of_month_precious": day_of_month,
-        "is_weekend_precious": is_weekend,
-        "is_end_of_month_precious": is_end_of_month,
+        # "is_weekend_precious": is_weekend,
+        # "is_end_of_month_precious": is_end_of_month,
         "days_since_first_occurrence_precious": days_since_first,
         "min_days_between_precious": min_interval,
         "max_days_between_precious": max_interval,
-        "merchant_total_count_precious": merchant_total_count,
+        # "merchant_total_count_precious": merchant_total_count,
         "merchant_recent_count_precious": merchant_recent_count,
         # "merchant_amount_stddev_precious": amount_stddev,
         "relative_amount_difference_precious": relative_amount_difference,
@@ -240,7 +240,9 @@ def get_additional_features(
 
 
 def get_amount_variation_features(
-    transaction: Transaction, all_transactions: list[Transaction], threshold: float = 0.2
+    transaction: Transaction,
+    all_transactions: list[Transaction],
+    # threshold: float = 0.2
 ) -> dict[str, FeatureValue]:
     """
     Calculate features related to amount variations for a given transaction.
@@ -248,11 +250,11 @@ def get_amount_variation_features(
     merchant_transactions = [t for t in all_transactions if t.name == transaction.name]
     merchant_avg = statistics.mean([t.amount for t in merchant_transactions]) if merchant_transactions else 0.0
     relative_diff = abs(transaction.amount - merchant_avg) / merchant_avg if merchant_avg != 0 else 0.0
-    amount_anomaly = relative_diff > threshold
+    # amount_anomaly = relative_diff > threshold
     return {
         # "merchant_avg_precious": merchant_avg,
         "relative_amount_diff_precious": relative_diff,
-        "amount_anomaly_precious": amount_anomaly,
+        # "amount_anomaly_precious": amount_anomaly,
     }
 
 
@@ -279,9 +281,9 @@ def get_new_features(
 
     # 3-5. Calendar features
     dt = datetime.datetime.strptime(transaction.date, "%Y-%m-%d")
-    day_of_week = dt.weekday()  # 0=Monday … 6=Sunday
+    # day_of_week = dt.weekday()  # 0=Monday … 6=Sunday
     day_of_month = dt.day  # 1-31
-    month = dt.month  # 1-12
+    # month = dt.month  # 1-12
 
     # 6. Days since last same-merchant & same-amount transaction
     previous = [t for t in same_user_merchant if t.amount == amt and t.date < transaction.date]
@@ -292,7 +294,7 @@ def get_new_features(
         days_since_last = 0
 
     # 7. Original recurring flag
-    recurring_flag = bool(getattr(transaction, "recurring", False))
+    # recurring_flag = bool(getattr(transaction, "recurring", False))
 
     # -------------------------- Additional Features --------------------------
     merchant_transactions = [t for t in all_transactions if t.name == transaction.name]
@@ -349,32 +351,35 @@ def get_new_features(
     if len(same_amt) > 1:
         dates_ord = [datetime.datetime.strptime(t.date, "%Y-%m-%d").toordinal() for t in same_amt]
         amounts = [t.amount for t in same_amt]
-        slope = np.polyfit(dates_ord, amounts, 1)[0]
+        try:
+            slope = np.polyfit(dates_ord, amounts, 1)[0]
+        except Exception:
+            slope = 0.0
     else:
         slope = 0.0
 
     # Burstiness Ratio (recent vs prior 3 months)
     trans_date = dt.date()
-    three_m_ago = trans_date - datetime.timedelta(days=90)
-    last_3m = sum(
-        1 for t in same_amt if three_m_ago <= datetime.datetime.strptime(t.date, "%Y-%m-%d").date() <= trans_date
-    )
-    prior_3m = sum(
-        1
-        for t in same_amt
-        if three_m_ago - datetime.timedelta(days=90)
-        <= datetime.datetime.strptime(t.date, "%Y-%m-%d").date()
-        < three_m_ago
-    )
-    burstiness_ratio = (last_3m / prior_3m) if prior_3m else float(last_3m)
+    # three_m_ago = trans_date - datetime.timedelta(days=90)
+    # last_3m = sum(
+    #     1 for t in same_amt if three_m_ago <= datetime.datetime.strptime(t.date, "%Y-%m-%d").date() <= trans_date
+    # )
+    # prior_3m = sum(
+    #     1
+    #     for t in same_amt
+    #     if three_m_ago - datetime.timedelta(days=90)
+    #     <= datetime.datetime.strptime(t.date, "%Y-%m-%d").date()
+    #     < three_m_ago
+    # )
+    # burstiness_ratio = (last_3m / prior_3m) if prior_3m else float(last_3m)
 
     # Expected-Next-Date Error
-    if same_amt:
-        last_date = datetime.datetime.strptime(same_amt[-1].date, "%Y-%m-%d").date()
-        predicted = last_date + datetime.timedelta(days=avg_interval)
-        next_date_error = abs((trans_date - predicted).days)
-    else:
-        next_date_error = 0
+    # if same_amt:
+    #     last_date = datetime.datetime.strptime(same_amt[-1].date, "%Y-%m-%d").date()
+    #     predicted = last_date + datetime.timedelta(days=avg_interval)
+    #     next_date_error = abs((trans_date - predicted).days)
+    # else:
+    #     next_date_error = 0
 
     # Serial Autocorrelation
     if len(intervals) > 1:
@@ -404,33 +409,34 @@ def get_new_features(
 
     # Robust Amount Stats
     amounts = [t.amount for t in merchant_transactions]
-    if amounts:
-        med_amt = statistics.median(amounts)
-        mad_amt = statistics.median([abs(a - med_amt) for a in amounts])
-        q1, q3 = np.percentile(amounts, [25, 75])
-        iqr_amt = q3 - q1
-    else:
-        med_amt = mad_amt = iqr_amt = 0.0
+    # if amounts:
+    #     med_amt = statistics.median(amounts)
+    #     mad_amt = statistics.median([abs(a - med_amt) for a in amounts])
+    #     q1, q3 = np.percentile(amounts, [25, 75])
+    #     iqr_amt = q3 - q1
+    # else:
+    #     med_amt = mad_amt = iqr_amt = 0.0
+    med_amt = statistics.median(amounts) if amounts else 0.0
 
     features: dict[str, float | int | bool] = {
         # Core features
         "amount_precious": float(amt),
         "rolling_mean_amount_precious": rolling_mean,
-        "day_of_week_precious": day_of_week,
+        # "day_of_week_precious": day_of_week,
         "day_of_month_precious": day_of_month,
-        "month_precious": month,
+        # "month_precious": month,
         "days_since_last_precious": days_since_last,
-        "recurring_precious": recurring_flag,
+        # "recurring_precious": recurring_flag,
         # Additional features
-        "merchant_avg_precious": merchant_avg,
+        # "merchant_avg_precious": merchant_avg,
         "relative_amount_diff_precious": relative_diff,
         # "amount_anomaly_precious": amount_anomaly,
         "interval_variance_ratio_precious": interval_variance_ratio,
         "dom_consistency_precious": dom_consistency,
         "seasonality_score_precious": seasonality_score,
         "amount_drift_precious": slope,
-        "burstiness_ratio_precious": burstiness_ratio,
-        "next_date_error_precious": next_date_error,
+        # "burstiness_ratio_precious": burstiness_ratio,
+        # "next_date_error_precious": next_date_error,
         "serial_autocorrelation_precious": acf1,
         "sin_doy_precious": sin_doy,
         "cos_doy_precious": cos_doy,
@@ -438,9 +444,9 @@ def get_new_features(
         "interval_consistency_ratio_precious": cons_ratio,
         "median_interval_precious": median_interval,
         "mad_interval_precious": mad_interval,
-        "robust_iqr_amount_precious": iqr_amt,
+        # "robust_iqr_amount_precious": iqr_amt,
         "median_amount_precious": med_amt,
-        "mad_amount_precious": mad_amt,
+        # "mad_amount_precious": mad_amt,
     }
 
     return features

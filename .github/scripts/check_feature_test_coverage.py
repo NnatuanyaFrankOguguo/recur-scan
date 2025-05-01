@@ -8,6 +8,7 @@ untested_funcs = [
     "get_new_features",
     "read_labeled_transactions",
     "read_test_transactions",
+    "read_earnin_test_transactions",
     "read_unlabeled_transactions",
     "group_transactions",
     "write_transactions",

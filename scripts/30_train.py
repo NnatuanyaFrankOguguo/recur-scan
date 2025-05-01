@@ -43,18 +43,18 @@ from recur_scan.transactions import (
 # %%
 # configure the script
 
-use_precomputed_features = False
+use_precomputed_features = True
 model_type = "xgb"  # "rf" or "xgb"
 n_cv_folds = 5  # number of cross-validation folds, could be 5
 do_hyperparameter_optimization = False  # set to False to use the default hyperparameters
 search_type = "bayesian"  # "grid", "random", or "bayesian"
-n_hpo_iters = 200  # number of hyperparameter optimization iterations
+n_hpo_iters = 250  # number of hyperparameter optimization iterations
 n_jobs = -1  # number of jobs to run in parallel (set to 1 if your laptop gets too hot)
 recall_weight = 1.5  # weight for recall in custom scorer (higher values favor recall over precision)
 
-in_path = "../../data/train.csv"
-precomputed_features_path = "../../data/train_features_selected.csv"
-out_dir = "../../data/training_out_selected"
+in_path = "training data"
+precomputed_features_path = "precomputed features"
+out_dir = "training output"
 
 # %%
 # parse script arguments from command line
@@ -298,7 +298,7 @@ if do_hyperparameter_optimization:
                 "scale_pos_weight": trial.suggest_float("scale_pos_weight", 27, 35),
                 "max_depth": trial.suggest_int("max_depth", 5, 9),  # Shallower trees
                 "learning_rate": trial.suggest_float("learning_rate", 0.05, 0.15, log=True),  # Slower learning
-                "n_estimators": trial.suggest_int("n_estimators", 100, 300),
+                "n_estimators": trial.suggest_int("n_estimators", 100, 500, step=50),
                 "min_child_weight": trial.suggest_int("min_child_weight", 1, 7),  # Higher to avoid noise
                 "reg_alpha": trial.suggest_float("reg_alpha", 0.5, 1.5, log=True),  # Stronger L1 regularization
                 "reg_lambda": trial.suggest_float("reg_lambda", 0.5, 1.5, log=True),  # Stronger L2 regularization
@@ -440,17 +440,17 @@ else:
         }
     elif model_type == "xgb":
         best_params = {
-            "scale_pos_weight": 31.511623420857994,
+            "scale_pos_weight": 33.6339939208229,
             "max_depth": 6,
-            "learning_rate": 0.09955113631445212,
-            "n_estimators": 190,
-            "min_child_weight": 4,
-            "reg_alpha": 0.5965225376051358,
-            "reg_lambda": 1.394884431173184,
-            "subsample": 0.8610433179540073,
-            "colsample_bytree": 0.8821838433729198,
-            "colsample_bylevel": 0.718321027387164,
-            "gamma": 0.33021566887213594,
+            "learning_rate": 0.08416195644648089,
+            "n_estimators": 190,  # 450
+            "min_child_weight": 2,
+            "reg_alpha": 0.8615845471900394,
+            "reg_lambda": 0.7831593559508362,
+            "subsample": 0.7470770012776469,
+            "colsample_bytree": 0.5497212934566775,
+            "colsample_bylevel": 0.9665628464460082,
+            "gamma": 0.696977126868726,
         }
 
 # %%
@@ -502,14 +502,16 @@ elif model_type == "xgb":
     logger.info(f"Best score: {model.best_score}")
 
     # Now retrain on full dataset using the best number of iterations found
-    # if hasattr(model, "best_iteration"):
-    # Retrain on full dataset with the optimal number of boosting rounds
-    # best_params["n_estimators"] = model.best_iteration
-    # model = xgb.XGBClassifier(random_state=42, **best_params, n_jobs=n_jobs)
-    # model.fit(X, y)
-    # logger.info(f"Retrained model with {model.n_estimators} estimators")
+    if hasattr(model, "best_iteration"):
+        # Retrain on full dataset with the optimal number of boosting rounds
+        best_params["n_estimators"] = model.best_iteration
 
-logger.info("Model trained")
+# %%
+# train the full model with the best hyperparameters
+
+model = xgb.XGBClassifier(random_state=42, **best_params, n_jobs=n_jobs)
+model.fit(X, y)
+logger.info(f"Ttrain full model with {model.n_estimators} estimators")
 
 # %%
 # review feature importances
@@ -594,76 +596,83 @@ print(X_cv.shape)
 # n_estimators = 240
 # best_params["n_estimators"] = n_estimators
 
-cv = GroupKFold(n_splits=n_cv_folds)
+for n_estimators in range(210, 220, 10):
+    best_params["n_estimators"] = n_estimators
+    cv = GroupKFold(n_splits=n_cv_folds)
 
-misclassified = []
-false_positives = set()
-false_negatives = set()
-precisions = []
-recalls = []
-f1s = []
-weighted_scores = []
+    misclassified = []
+    false_positives = set()
+    false_negatives = set()
+    precisions = []
+    recalls = []
+    f1s = []
+    weighted_scores = []
 
-logger.info(f"Starting cross-validation with {n_cv_folds} folds and {best_params}")
-for fold, (train_idx, val_idx) in enumerate(cv.split(X_cv, y, groups=user_ids)):
-    logger.info(f"Fold {fold + 1} of {n_cv_folds}")
-    # Get training and validation data
-    X_train, X_val = X_cv[train_idx], X_cv[val_idx]
-    y_train, y_val = np.array(y)[train_idx], np.array(y)[val_idx]
-    transactions_val = [transactions[i] for i in val_idx]  # Keep the original transaction instances for this fold
+    logger.info(f"Starting cross-validation with {n_cv_folds} folds and {best_params}")
+    for fold, (train_idx, val_idx) in enumerate(cv.split(X_cv, y, groups=user_ids)):
+        logger.info(f"Fold {fold + 1} of {n_cv_folds}")
+        # Get training and validation data
+        X_train, X_val = X_cv[train_idx], X_cv[val_idx]
+        y_train, y_val = np.array(y)[train_idx], np.array(y)[val_idx]
+        transactions_val = [transactions[i] for i in val_idx]  # Keep the original transaction instances for this fold
 
-    # Train the model
-    if model_type == "rf":
-        model = RandomForestClassifier(random_state=42, **best_params, n_jobs=n_jobs)
-        model.fit(X_train, y_train)
+        # Train the model
+        if model_type == "rf":
+            model = RandomForestClassifier(random_state=42, **best_params, n_jobs=n_jobs)
+            model.fit(X_train, y_train)
 
-    elif model_type == "xgb":
-        # No need for early stopping during cross-validation evaluation
-        # We've already determined the optimal n_estimators in the model training phase
-        model = xgb.XGBClassifier(
-            random_state=42,
-            n_jobs=n_jobs,
-            **best_params,  # This already contains the optimized n_estimators
+        elif model_type == "xgb":
+            # No need for early stopping during cross-validation evaluation
+            # We've already determined the optimal n_estimators in the model training phase
+            model = xgb.XGBClassifier(
+                random_state=42,
+                n_jobs=n_jobs,
+                **best_params,  # This already contains the optimized n_estimators
+            )
+            model.fit(X_train, y_train)
+
+        # Make predictions
+        y_pred = model.predict(X_val)
+
+        # Find misclassified instances
+        misclassified_fold = [transactions_val[i] for i in range(len(y_val)) if y_val[i] != y_pred[i]]
+        misclassified.extend(misclassified_fold)
+
+        # track false positives and false negatives
+        false_positives.update([
+            transactions_val[i] for i in range(len(y_val)) if y_val[i] != y_pred[i] and y_val[i] == 0
+        ])
+        false_negatives.update([
+            transactions_val[i] for i in range(len(y_val)) if y_val[i] != y_pred[i] and y_val[i] == 1
+        ])
+
+        # Calculate and report scores
+        precision = precision_score(y_val, y_pred)
+        recall = recall_score(y_val, y_pred)
+        f1 = f1_score(y_val, y_pred)
+        weighted_score = weighted_precision_recall_score(y_val, y_pred)
+
+        precisions.append(precision)
+        recalls.append(recall)
+        f1s.append(f1)
+        weighted_scores.append(weighted_score)
+
+        print(
+            f"Fold {fold + 1} Precision: {precision:.2f}, Recall: {recall:.2f}, F1: {f1:.2f}, "
+            f"Weighted: {weighted_score:.2f}"
         )
-        model.fit(X_train, y_train)
+        print(f"Misclassified Instances in Fold {fold + 1}: {len(misclassified_fold)}")
 
-    # Make predictions
-    y_pred = model.predict(X_val)
-
-    # Find misclassified instances
-    misclassified_fold = [transactions_val[i] for i in range(len(y_val)) if y_val[i] != y_pred[i]]
-    misclassified.extend(misclassified_fold)
-
-    # track false positives and false negatives
-    false_positives.update([transactions_val[i] for i in range(len(y_val)) if y_val[i] != y_pred[i] and y_val[i] == 0])
-    false_negatives.update([transactions_val[i] for i in range(len(y_val)) if y_val[i] != y_pred[i] and y_val[i] == 1])
-
-    # Calculate and report scores
-    precision = precision_score(y_val, y_pred)
-    recall = recall_score(y_val, y_pred)
-    f1 = f1_score(y_val, y_pred)
-    weighted_score = weighted_precision_recall_score(y_val, y_pred)
-
-    precisions.append(precision)
-    recalls.append(recall)
-    f1s.append(f1)
-    weighted_scores.append(weighted_score)
-
-    print(
-        f"Fold {fold + 1} Precision: {precision:.2f}, Recall: {recall:.2f}, F1: {f1:.2f}, "
-        f"Weighted: {weighted_score:.2f}"
-    )
-    print(f"Misclassified Instances in Fold {fold + 1}: {len(misclassified_fold)}")
-
-# print the average precision, recall, and f1 score for all folds
-print(f"Model type: {model_type}")
-print(f"\nAverage Metrics Across {n_cv_folds} Folds:")
-print(f"Precision: {sum(precisions) / len(precisions):.3f}")
-print(f"Recall: {sum(recalls) / len(recalls):.3f}")
-print(f"F1 Score: {sum(f1s) / len(f1s):.3f}")
-print(f"Weighted Score (recall x{recall_weight}): {sum(weighted_scores) / len(weighted_scores):.3f}")
-print(f"False positives: {len(false_positives)}")
-print(f"False negatives: {len(false_negatives)}")
+    # print the average precision, recall, and f1 score for all folds
+    print(f"Model type: {model_type}")
+    print(f"n_estimators: {n_estimators}")
+    print(f"\nAverage Metrics Across {n_cv_folds} Folds:")
+    print(f"Precision: {sum(precisions) / len(precisions):.3f}")
+    print(f"Recall: {sum(recalls) / len(recalls):.3f}")
+    print(f"F1 Score: {sum(f1s) / len(f1s):.3f}")
+    print(f"Weighted Score (recall x{recall_weight}): {sum(weighted_scores) / len(weighted_scores):.3f}")
+    print(f"False positives: {len(false_positives)}")
+    print(f"False negatives: {len(false_negatives)}")
 
 # %%
 # save the misclassified transactions to a csv file in the output directory

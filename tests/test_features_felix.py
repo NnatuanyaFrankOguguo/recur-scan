@@ -114,9 +114,9 @@ def test_get_transaction_intervals_single_transaction():
     result = get_transaction_intervals(single_tx)
     expected = {
         "avg_days_between_transactions_felix": 0.0,
-        "std_dev_days_between_transactions_felix": 0.0,
+        # "std_dev_days_between_transactions_felix": 0.0,
         "monthly_recurrence_felix": 0,
-        "same_weekday_felix": 0,
+        # "same_weekday_felix": 0,
         "same_amount_felix": 0,
     }
     assert result == expected
@@ -153,21 +153,21 @@ def test_get_transaction_intervals_multiple_transactions() -> None:
     result = get_transaction_intervals(transactions)
     expected = {
         "avg_days_between_transactions_felix": 30.5,
-        "std_dev_days_between_transactions_felix": 10.6066,
+        # "std_dev_days_between_transactions_felix": 10.6066,
         "monthly_recurrence_felix": 1.0,
-        "same_weekday_felix": 0,
+        # "same_weekday_felix": 0,
         "same_amount_felix": 2 / 3,
     }
     assert isclose(
         result["avg_days_between_transactions_felix"], expected["avg_days_between_transactions_felix"], rel_tol=1e-5
     )
-    assert isclose(
-        result["std_dev_days_between_transactions_felix"],
-        expected["std_dev_days_between_transactions_felix"],
-        rel_tol=1e-3,
-    )
+    # assert isclose(
+    #     result["std_dev_days_between_transactions_felix"],
+    #     expected["std_dev_days_between_transactions_felix"],
+    #     rel_tol=1e-3,
+    # )
     assert result["monthly_recurrence_felix"] == expected["monthly_recurrence_felix"]
-    assert result["same_weekday_felix"] == expected["same_weekday_felix"]
+    # assert result["same_weekday_felix"] == expected["same_weekday_felix"]
     assert result["same_amount_felix"] == expected["same_amount_felix"]
 
 

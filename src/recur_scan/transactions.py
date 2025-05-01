@@ -186,3 +186,50 @@ def read_test_transactions(path: str) -> list[Transaction]:
         )
 
     return transactions
+
+
+def read_earnin_test_transactions(path: str) -> list[Transaction]:
+    """
+    Read test transactions from a CSV file with different column headers.
+
+    Maps the following columns:
+    - user_id: userid
+    - name: memo or description
+    - date: postedon (just the date, no time)
+    - amount: amount
+
+    Args:
+        path: Path to the CSV file
+
+    Returns:
+        List of Transaction objects sorted by name, then date
+    """
+    transactions = []
+
+    with open(path, newline="") as f:
+        reader = csv.DictReader(f)
+        for ix, row in enumerate(reader):
+            try:
+                transactions.append(
+                    Transaction(
+                        id=ix,
+                        user_id=row["userid"],
+                        name=row["memo"] or row["description"],
+                        date=row["postedon"].split("T")[0],  # convert YYYY-MM-DDTJJ:MM:SSZ to YYYY-MM-DD
+                        amount=float(row["amount"]),
+                    )
+                )
+            except ValueError as e:
+                logger.warning(f"Error parsing transaction amount {row['AMOUNT_CENTS']} in {path} at row {ix}: {e}")
+                continue
+
+    # Sort transactions by user_id, name, then date
+    transactions.sort(key=lambda x: (x.user_id, x.name, x.date))
+
+    # Reassign IDs to maintain sequential ordering after sorting
+    for ix, transaction in enumerate(transactions):
+        transactions[ix] = Transaction(
+            id=ix, user_id=transaction.user_id, name=transaction.name, date=transaction.date, amount=transaction.amount
+        )
+
+    return transactions

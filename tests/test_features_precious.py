@@ -134,10 +134,10 @@ def test_get_additional_features():
     ]
     feats = get_additional_features(t, txs)
     for key in [
-        "day_of_week_precious",
+        # "day_of_week_precious",
         "day_of_month_precious",
-        "is_weekend_precious",
-        "merchant_total_count_precious",
+        # "is_weekend_precious",
+        # "merchant_total_count_precious",
     ]:
         assert key in feats
 
@@ -148,13 +148,13 @@ def test_get_amount_variation_features():
         Transaction(id=17, user_id="user1", name="AT&T", amount=50.99, date="2023-01-31"),
         Transaction(id=18, user_id="user1", name="AT&T", amount=50.99, date="2023-03-02"),
     ]
-    features = get_amount_variation_features(txs[0], txs, threshold=0.2)
+    features = get_amount_variation_features(txs[0], txs)
     # assert pytest.approx(features["merchant_avg_precious"]) == 50.99
     assert features["relative_amount_diff_precious"] == 0.0
     # assert features["amount_anomaly_precious"] is False
 
     t_anomaly = Transaction(id=19, user_id="user1", name="AT&T", amount=100.0, date="2023-04-01")
-    features_anomaly = get_amount_variation_features(t_anomaly, txs, threshold=0.2)
+    features_anomaly = get_amount_variation_features(t_anomaly, txs)
     expected_relative = abs(100.0 - 50.99) / 50.99
     assert pytest.approx(features_anomaly["relative_amount_diff_precious"]) == expected_relative
     # assert features_anomaly["amount_anomaly_precious"] is True
@@ -179,11 +179,11 @@ def test_get_new_features(sample_transactions):
     # Core features
     assert features["amount_precious"] == transaction.amount
     assert features["rolling_mean_amount_precious"] == pytest.approx(50.99)  # Based on sample data
-    assert features["day_of_week_precious"] == 6  # January 1, 2023, is a Sunday
+    # assert features["day_of_week_precious"] == 6  # January 1, 2023, is a Sunday
     assert features["day_of_month_precious"] == 1
-    assert features["month_precious"] == 1
+    # assert features["month_precious"] == 1
     assert features["days_since_last_precious"] == 0  # No prior transactions with same user+merchant+amount
-    assert features["recurring_precious"] is False  # No recurring flag in sample data
+    # assert features["recurring_precious"] is False  # No recurring flag in sample data
 
     # Additional features
     # assert features["merchant_avg_precious"] == pytest.approx(50.99)  # Average for AT&T in sample data
@@ -193,8 +193,8 @@ def test_get_new_features(sample_transactions):
     assert features["dom_consistency_precious"] is False  # All transactions occur on the same day of the month
     assert features["seasonality_score_precious"] == 1.0  # Perfect monthly seasonality
     assert pytest.approx(features["amount_drift_precious"]) == 0.0  # No drift in amounts
-    assert features["burstiness_ratio_precious"] == 1.0  # All transactions are recent
-    assert features["next_date_error_precious"] == 90  # Perfect prediction for next date
+    # assert features["burstiness_ratio_precious"] == 1.0  # All transactions are recent
+    # assert features["next_date_error_precious"] == 90  # Perfect prediction for next date
     assert features["serial_autocorrelation_precious"] == 0.0  # Only one interval, so no autocorrelation
     assert features["sin_doy_precious"] == pytest.approx(math.sin(2 * math.pi * 1 / 365))  # Day 1 of the year
     assert features["cos_doy_precious"] == pytest.approx(math.cos(2 * math.pi * 1 / 365))
@@ -202,6 +202,6 @@ def test_get_new_features(sample_transactions):
     assert features["interval_consistency_ratio_precious"] == 1.0  # No intervals to calculate consistency
     assert features["median_interval_precious"] == 30.0  # No intervals
     assert features["mad_interval_precious"] == 0.0  # No intervals
-    assert features["robust_iqr_amount_precious"] == 0.0  # Only one amount
+    # assert features["robust_iqr_amount_precious"] == 0.0  # Only one amount
     assert features["median_amount_precious"] == pytest.approx(50.99)  # Median of one amount
-    assert features["mad_amount_precious"] == 0.0  # No deviation from median
+    # assert features["mad_amount_precious"] == 0.0  # No deviation from median

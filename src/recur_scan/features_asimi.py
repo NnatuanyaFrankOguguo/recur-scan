@@ -223,8 +223,8 @@ def get_temporal_consistency_features(
     if len(vendor_transactions) < 3:
         return {
             "temporal_consistency_score_asimi": 0.0,
-            "is_monthly_consistent_asimi": 0,
-            "is_weekly_consistent_asimi": 0,
+            # "is_monthly_consistent_asimi": 0,
+            # "is_weekly_consistent_asimi": 0,
         }
 
     dates = sorted([datetime.datetime.strptime(t.date, "%Y-%m-%d") for t in vendor_transactions])
@@ -240,8 +240,8 @@ def get_temporal_consistency_features(
 
     return {
         "temporal_consistency_score_asimi": (monthly_consistency + weekly_consistency) / 2,
-        "is_monthly_consistent_asimi": int(monthly_consistency > 0.7),
-        "is_weekly_consistent_asimi": int(weekly_consistency > 0.7),
+        # "is_monthly_consistent_asimi": int(monthly_consistency > 0.7),
+        # "is_weekly_consistent_asimi": int(weekly_consistency > 0.7),
     }
 
 
@@ -255,7 +255,7 @@ def get_vendor_recurrence_profile(transaction: Transaction, all_transactions: li
         return {
             # "vendor_recurrence_score_asimi": 0.0,
             "vendor_recurrence_consistency_asimi": 0.0,
-            "vendor_is_common_recurring_asimi": 0,
+            # "vendor_is_common_recurring_asimi": 0,
         }
 
     # Count how many unique users have recurring patterns with this vendor
@@ -274,22 +274,22 @@ def get_vendor_recurrence_profile(transaction: Transaction, all_transactions: li
     else:
         amount_consistency = 0
 
-    common_recurring_vendors = {
-        "netflix",
-        "spotify",
-        "microsoft",
-        "amazon prime",
-        "at&t",
-        "verizon",
-        "spectrum",
-        "geico",
-        "hugo insurance",
-    }
+    # common_recurring_vendors = {
+    #     "netflix",
+    #     "spotify",
+    #     "microsoft",
+    #     "amazon prime",
+    #     "at&t",
+    #     "verizon",
+    #     "spectrum",
+    #     "geico",
+    #     "hugo insurance",
+    # }
 
     return {
         # "vendor_recurrence_score_asimi": len(recurring_users) / len({t.user_id for t in vendor_transactions}),
         "vendor_recurrence_consistency_asimi": amount_consistency,
-        "vendor_is_common_recurring_asimi": int(vendor_name in common_recurring_vendors),
+        # "vendor_is_common_recurring_asimi": int(vendor_name in common_recurring_vendors),
     }
 
 
